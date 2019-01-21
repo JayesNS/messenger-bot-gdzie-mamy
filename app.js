@@ -64,28 +64,32 @@ function handleMessage(senderPsid, receivedMessage) {
     };
   }
 
-  console.log(
-    prepareMessage(senderPsid, 'elo mordo', null, {
-      quick_replies: [
-        {
-          content_type: 'web_url',
-          title: 'Gdzie mamy?',
-          payload: 'Gdzie mamy?',
-          url: 'http://planzajec.uek.krakow.pl'
-        }
-      ]
-    })
-  );
-  sendMessage(
-    prepareMessage(senderPsid, 'elo mordo', null, {
-      quick_replies: [
-        {
-          content_type: 'text',
-          title: 'Gdzie mamy?',
-          payload: 'Gdzie mamy?'
-        }
-      ]
-    })
+  // sendMessage(
+  //   prepareMessage(senderPsid, 'elo mordo', null, {
+  //     quick_replies: [
+  //       {
+  //         content_type: 'text',
+  //         title: 'Gdzie mamy?',
+  //         payload: 'Gdzie mamy?'
+  //       }
+  //     ]
+  //   })
+  // );
+  request(
+    {
+      uri: 'https://graph.facebook.com/v2.6/me/messages',
+      qs: { access_token: PAGE_ACCESS_TOKEN },
+      method: 'POST',
+      json: requestBody
+    },
+    (err, res, body) => {
+      if (!err) {
+        console.log('message sent!');
+        console.log('body', body);
+      } else {
+        console.error('Unable to send message:' + err);
+      }
+    }
   );
 }
 

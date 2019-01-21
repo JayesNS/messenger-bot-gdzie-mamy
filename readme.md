@@ -1,4 +1,4 @@
-# Wysyłanie wiadomości
+# Wysyłanie wiadomości do bota
 
 Wyślij zapytanie POST na adres `https://gdziemamy.jsthats.me/webhook`, o typie zawartości `application/json`, parametrem jest tekst w formacie `JSON` z danymi potrzebnymi do wysłania zawartości.
 
@@ -29,6 +29,25 @@ Wyślij zapytanie POST na adres `https://gdziemamy.jsthats.me/webhook`, o typie 
 ```bash
 curl -H "Content-Type: application/json" -X POST "https://gdziemamy.jsthats.me/webhook" -d '{"object":"page","entry": [{"messaging": [{"sender":{"id":"<SENDER_ID>"},"message":{"text":"hello, world!"}}]}]}'
 ```
+
+# Wysyłanie wiadomości w imieniu bota
+
+Proces wygląda podobnie tylko tym razem zapytanie wysyłane jest na adres `https://graph.facebook.com/v2.6/me/messages?access_token=<PAGE_ACCESS_TOKEN>`. Typ zawartości tak samo jak wcześniej `application/json`. Przykładowa zawartość `JSON`:
+
+```json
+{
+  "recipient": {
+    "id": "<RECIPIENT_ID>"
+  },
+  "message": {
+    "text": "hello, world!"
+  }
+}
+```
+
+# Referencja
+
+Więcej o możliwościach bota na [Facebook API](https://developers.facebook.com/docs/messenger-platform)
 
 # Odpalanie lokalnego środowiska (node.js)
 
