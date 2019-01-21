@@ -1,0 +1,26 @@
+// Localhost token verification
+curl -X GET "localhost:1337/webhook?hub.verify_token=albert:gdzie-mamy&hub.challenge=CHALLENGE_ACCEPTED&hub.mode=subscribe"
+
+// Localhost message
+curl -H "Content-Type: application/json" -X POST "localhost:1337/webhook" -d '{
+    "object": "page",
+    "entry": [{
+        "messaging": [{
+            "sender":{
+                "id":"<SENDER_ID>"
+            },
+            "message":{
+                "text":"hello, world!"
+}}]}]}'
+
+// Gdzie Mamy? message
+curl -H "Content-Type: application/json" -X POST "https://gdziemamy.jsthats.me/webhook" -d '{
+    "object": "page",
+    "entry": [{
+        "messaging": [{
+            "sender":{
+                "id":"<SENDER_ID>"
+            },
+            "message":{
+                "text":"hello, world!"
+}}]}]}'
