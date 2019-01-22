@@ -11,3 +11,4 @@ app.get('/', (req, res) => {
 });
 
 app.use('/webhook', require('./webhook'));
+app.use('/api', require('./api'));
