@@ -1,3 +1,5 @@
+'use strict';
+
 const express = require('express'),
   router = express.Router(),
   request = require('request'),
@@ -5,49 +7,150 @@ const express = require('express'),
 
 const apiUrl = 'http://planzajec.uek.krakow.pl';
 
-router.get('/get-groups', (req, res) => {
-  getAllGroups((groups, error) => {
+// https://gdziemamy.jsthats.pl/api/...
+router.get('/groups', (req, res) => {
+  getJSONFromUrl(urlToAllGroups(), selectAllGroups, null, (groups, error) => {
     if (error) {
       res.status(503).send(error);
     }
 
-    res.setHeader('Content-Type', 'application/json');
-    res.status(200).send(groups);
+    res.status(200).json(groups);
   });
 });
-router.get('/get-groups/:group', (req, res) => {
+router.get('/groups/:groupName', (req, res) => {
   if (!req.params) {
     res.status(503).send('error');
   }
 
-  const group = req.params.group;
+  const NUMBER_OF_SUGGESTED_GROUPS = 5;
+  const group = req.params.groupName;
 
-  res.status(200).send(group);
-});
-
-function getAllGroups(callback) {
-  request(urlToAllGroups(), (error, response, body) => {
-    if (error || response.statusCode !== 200) {
-      console.error('[GdzieMamy? API]', error);
-      callback(null, error);
+  getJSONFromUrl(urlToAllGroups(), selectGroup, group, (groups, error) => {
+    if (error) {
+      res.status(503).send(error);
     }
 
-    const rawData = convertXMLToJSON(body);
+    if (groups.length > NUMBER_OF_SUGGESTED_GROUPS) {
+      groups = [];
+    }
 
-    callback(extractGroupsFromRawData(rawData));
+    res.status(200).json(groups);
+  });
+});
+router.get('/plans/:groupId', (req, res) => {
+  if (!req.params) {
+    res.status(503).send('error');
+  }
+
+  const groupId = req.params.groupId;
+
+  getJSONFromUrl(
+    urlToGroup(groupId),
+    selectTodaysLectures,
+    null,
+    (lectures, error) => {
+      if (error) {
+        res.status(503).send(error);
+      }
+
+      res.status(200).json(lectures);
+    }
+  );
+});
+router.get('/plans/:groupId/next/:time?', (req, res) => {
+  if (!req.params) {
+    res.status(503).send('error');
+  }
+
+  const groupId = req.params.groupId;
+  const time = req.params.time;
+
+  getJSONFromUrl(
+    urlToGroup(groupId),
+    selectNextLecture,
+    time,
+    (lecture, error) => {
+      if (error) {
+        res.status(503).send(error);
+      }
+
+      res.status(200).json(lecture);
+    }
+  );
+});
+
+function getJSONFromUrl(url, selector, selectorData, callback) {
+  request(url, (error, response, body) => {
+    handleError(error, response.statusCode, '[GdzieMamy? API]', callback);
+
+    const data = convertXMLToJSON(body);
+    callback(selector ? selector(data, selectorData) : data);
   });
 }
 
-const extractGroupsFromRawData = data =>
-  data['plan-zajec']['zasob'].map(group => ({
-    id: group['id'],
-    name: group['nazwa']
-  }));
-const urlToAllGroups = () => `${apiUrl}?typ=G&xml`;
-const urlToGroup = groupId => `${apiUrl}?xml`;
+// Extractors
+const selectAllGroups = data =>
+  data['plan-zajec']['zasob'].map(group => parseGroup(group));
+const selectGroup = (groups, groupName) =>
+  selectAllGroups(groups).filter(group =>
+    group.name.toLowerCase().includes(groupName.toLowerCase())
+  );
+const selectLectures = data => data['plan-zajec']['zajecia'];
+const selectTodaysLectures = data =>
+  selectLectures(data).filter(lecture =>
+    compareOnlyDates(new Date('2019-01-23T07:20'), lecture['termin'])
+  );
+const selectNextLecture = (data, time) =>
+  selectTodaysLectures(data)
+    .map(lecture => {
+      return {
+        ...lecture,
+        timeToLecture: timeDifference(
+          createTimestamp(lecture['termin'], lecture['od-godz']),
+          time
+        )
+      };
+    })
+    .filter(lecture => lecture.timeToLecture > 0)[0];
 
+// URLs
+const urlToAllGroups = () => `${apiUrl}?typ=G&xml`;
+const urlToGroup = groupId => `${apiUrl}?typ=G&id=${groupId}&okres=1&xml`;
+
+// Parsers
+const parseGroup = group => ({
+  id: group['id'],
+  name: group['nazwa']
+});
+
+// Helpers
 function convertXMLToJSON(rawXML) {
   return JSON.parse(xml2json.toJson(rawXML));
+}
+
+function handleError(error, statusCode, location, callback) {
+  if (error || statusCode !== 200) {
+    console.error(location, error);
+    callback(null, error);
+  }
+}
+
+function compareOnlyDates(timestamp1, timestamp2) {
+  const date1 = new Date(timestamp1);
+  const date2 = new Date(timestamp2);
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDay() === date2.getDay()
+  );
+}
+
+function timeDifference(time1, time2) {
+  return new Date(time1).getTime() - new Date(time2).getTime();
+}
+
+function createTimestamp(date, time) {
+  return new Date(`${date}T${time}`);
 }
 
 module.exports = router;
