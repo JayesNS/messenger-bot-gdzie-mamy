@@ -22,7 +22,7 @@ router.get('/groups/:groupName', (req, res) => {
     res.status(503).send('error');
   }
 
-  const NUMBER_OF_SUGGESTED_GROUPS = 5;
+  const NUMBER_OF_SUGGESTED_GROUPS = 3;
   const group = req.params.groupName;
 
   getJSONFromUrl(urlToAllGroups(), selectGroup, group, (groups, error) => {
@@ -74,7 +74,7 @@ router.get('/plans/:groupId/next/:time?', (req, res) => {
         res.status(503).send(error);
       }
 
-      res.status(200).json(lecture);
+      res.status(200).json(lecture || {});
     }
   );
 });
@@ -98,16 +98,17 @@ const selectGroup = (groups, groupName) =>
 const selectLectures = data => data['plan-zajec']['zajecia'];
 const selectTodaysLectures = data =>
   selectLectures(data).filter(lecture =>
-    compareOnlyDates(new Date('2019-01-23T07:20'), lecture['termin'])
+    compareOnlyDates(new Date(), lecture['termin'])
   );
 const selectNextLecture = (data, time) =>
   selectTodaysLectures(data)
     .map(lecture => {
+      console.log('selectNextLecture', time);
       return {
         ...lecture,
         timeToLecture: timeDifference(
           createTimestamp(lecture['termin'], lecture['od-godz']),
-          time
+          time || new Date()
         )
       };
     })
