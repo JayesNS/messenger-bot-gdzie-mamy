@@ -13,7 +13,8 @@ const MessageResponseName = {
   GROUP_FOUND: 'GROUP_FOUND',
   NO_MATCHING_GROUPS: 'NO_MATCHING_GROUPS',
   PLEASE_SPECIFY_GROUP: 'PLEASE_SPECIFY_GROUP',
-  SHOW_SCHEDULE: 'SHOW_SCHEDULE'
+  SHOW_SCHEDULE: 'SHOW_SCHEDULE',
+  SEND_NUDES: 'SEND_NUDES'
 };
 
 const messageResponses = {
@@ -22,7 +23,7 @@ const messageResponses = {
     content: data => {
       if (data.user.groups.length === 0) {
         return prepareQuickRepliesMessage('Nie należysz do żadnej grupy.', [
-          quickReply('Dodaj', 'skonfiguruj')
+          quickReply('Skonfiguruj', 'Skonfiguruj')
         ]);
       } else {
         apiFindSchedule(data.user.groups[0].id, lecture => {
@@ -30,9 +31,14 @@ const messageResponses = {
             sendMessage(
               data.user.senderPsid,
               prepareTextMessage(
-                `Masz w sali ${lecture['sala']} o ${lecture['od-godz']}-${
+                `W godzinach ${lecture['od-godz']}-${
                   lecture['do-godz']
-                }`
+                } masz "${lecture['przedmiot']}"` +
+                  (lecture['nauczyciel'] !== undefined
+                    ? ` w sali ${lecture['sala']} z ${
+                        lecture['nauczyciel']['$t']
+                      }`
+                    : '')
               )
             );
           } else {
@@ -58,6 +64,13 @@ const messageResponses = {
       prepareQuickRepliesMessage(
         'Znaleziono kilka pasujących grup. Czy należysz do którejś z nich?',
         groups.map(group => quickReply(group.name, group.name))
+      )
+  },
+  SEND_NUDES: {
+    triggers: ['send nudes'],
+    content: () =>
+      prepareImageMessage(
+        'https://www.facebook.com/gdzie.mamy/photos/a.2164045370590380/2164045387257045'
       )
   },
   NO_MATCHING_GROUPS: {
@@ -104,8 +117,8 @@ const messageResponses = {
 const userRepo = new UserRepo();
 
 function handleMessage(senderPsid, receivedMessage) {
+  console.log(receivedMessage);
   const messageText = receivedMessage.text;
-
   const messageResponseName = findMessageResponseNameByTrigger(messageText);
 
   let user;
@@ -120,9 +133,7 @@ function handleMessage(senderPsid, receivedMessage) {
   } else {
     const payload = { user, message: messageText };
 
-    const messageResponse =
-      messageResponses[messageResponseName] ||
-      messageResponses['HOW_CAN_I_HELP_YOU'];
+    const messageResponse = messageResponses[messageResponseName];
 
     if (messageResponse.content(payload)) {
       sendMessage(senderPsid, messageResponse.content(payload));
@@ -133,13 +144,34 @@ function handleMessage(senderPsid, receivedMessage) {
 
 function handlePostback(senderPsid, receivedPostback) {
   console.log(receivedPostback);
+  const messageText = receivedPostback.payload || receivedPostback.text;
+  const messageResponseName = findMessageResponseNameByTrigger(messageText);
+
+  let user;
+  if (!userRepo.hasUser(senderPsid)) {
+    user = userRepo.addUser(new User(senderPsid));
+  } else {
+    user = userRepo.getUser(senderPsid);
+  }
+
+  if (!messageResponseName) {
+    handleUnpredictedMessage(user, messageText);
+  } else {
+    const payload = { user, message: messageText };
+
+    const messageResponse = messageResponses[messageResponseName];
+
+    if (messageResponse.content(payload)) {
+      sendMessage(senderPsid, messageResponse.content(payload));
+    }
+  }
+  user.addMessagingHistoryRecord(messageResponseName);
 }
 
 function handleUnpredictedMessage(user, message) {
+  console.log('unpredicted', message);
   if (user.getLastMessagingHistoryRecord() === MessageResponseName.CONFIGURE) {
-    // userRepo.
     apiFindGroup(message, groups => {
-      console.log('groups', groups);
       if (groups.length === 1) {
         user.addGroup(groups[0]);
         sendMessage(user.senderPsid, messageResponses['GROUP_FOUND'].content());
@@ -165,8 +197,7 @@ function handleUnpredictedMessage(user, message) {
   }
 }
 
-const apiUrl = 'http://localhost:1337/api';
-// const apiUrl = 'https://gdziemamy.jsthats.me/api';
+const apiUrl = 'https://gdziemamy.jsthats.me/api';
 // API requests
 function apiFindGroup(groupName, callback) {
   request(`${apiUrl}/groups/${groupName}`, (err, res, data) => {
@@ -235,6 +266,23 @@ function prepareButtonMessage(buttonText, buttons, messageOptions) {
   };
 }
 
+function prepareImageMessage(imageUrl) {
+  return {
+    attachment: {
+      type: 'template',
+      payload: {
+        template_type: 'media',
+        elements: [
+          {
+            media_type: 'image',
+            url: imageUrl
+          }
+        ]
+      }
+    }
+  };
+}
+
 function prepareQuickRepliesMessage(messageText, quickReplies) {
   return {
     text: messageText,
@@ -244,6 +292,9 @@ function prepareQuickRepliesMessage(messageText, quickReplies) {
 
 // Helpers
 function findMessageResponseNameByTrigger(trigger) {
+  if (typeof trigger !== 'string') {
+    return;
+  }
   return Object.keys(messageResponses).find(name =>
     messageResponses[name].triggers.includes(trigger.toLowerCase())
   );
