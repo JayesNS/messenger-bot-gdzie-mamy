@@ -2,8 +2,10 @@
 
 const { UserRepo, User } = require('./users');
 
-const request = require('request'),
-  PAGE_ACCESS_TOKEN = require('./page-access-token').token;
+const request = require('request');
+
+const PAGE_ACCESS_TOKEN = require('./page-access-token').token,
+  returnNullIdObjectEmpty = require('./helpers/return-null-if-object-empty');
 
 const MessageResponseName = {
   ASK_FOR_GROUP: 'ASK_FOR_GROUP',
@@ -14,110 +16,135 @@ const MessageResponseName = {
   NO_MATCHING_GROUPS: 'NO_MATCHING_GROUPS',
   PLEASE_SPECIFY_GROUP: 'PLEASE_SPECIFY_GROUP',
   SHOW_SCHEDULE: 'SHOW_SCHEDULE',
-  SEND_NUDES: 'SEND_NUDES'
+  SEND_NUDES: 'SEND_NUDES',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+  TRY_SHOW_SCHEDULE: 'TRY_SHOW_SCHEDULE'
 };
 
 const messageResponses = {
+  NOT_CONFIGURED: {
+    triggers: [MessageResponseName.NOT_CONFIGURED],
+    content: () =>
+      prepareQuickRepliesMessage('Nie należysz do żadnej grupy.', [quickReply('Skonfiguruj')])
+  },
   SHOW_SCHEDULE: {
-    triggers: ['gdzie mamy?', 'gdziemamy', 'gdzie mamy'],
+    triggers: [MessageResponseName.SHOW_SCHEDULE, 'SHOW_SCHEDULE'],
     content: data => {
-      if (data.user.groups.length === 0) {
-        return prepareQuickRepliesMessage('Nie należysz do żadnej grupy.', [
-          quickReply('Skonfiguruj', 'Skonfiguruj')
-        ]);
-      } else {
-        apiFindSchedule(data.user.groups[0].id, lecture => {
-          if (lecture) {
+      apiFindSchedule(data.user.groups[0].id)
+        .then(lecture => {
+          if (returnNullIdObjectEmpty(lecture)) {
             sendMessage(
               data.user.senderPsid,
-              prepareTextMessage(
-                `W godzinach ${lecture['od-godz']}-${
-                  lecture['do-godz']
-                } masz "${lecture['przedmiot']}"` +
-                  (lecture['nauczyciel'] !== undefined
-                    ? ` w sali ${lecture['sala']} z ${
-                        lecture['nauczyciel']['$t']
-                      }`
-                    : '')
-              )
+              messageResponses['DISPLAY_SCHEDULE'].content(lecture)
             );
           } else {
-            sendMessage(
-              data.user.senderPsid,
-              prepareTextMessage('Nie masz dziś żadnych zajęć')
-            );
+            sendMessage(data.user.senderPsid, messageResponses['NO_LECTURES_TODAY'].content());
           }
+        })
+        .catch(error => {
+          console.error('error', error);
         });
+    }
+  },
+  NO_LECTURES_TODAY: {
+    triggers: [],
+    content: () => prepareTextMessage('Nie masz dziś żadnych zajęć')
+  },
+  DISPLAY_SCHEDULE: {
+    triggers: [],
+    content: lecture => {
+      const time = `${lecture.startTime}-${lecture.endTime}`;
+      const lectureType = ` ${lecture.type}`;
+      const lectureName = `${lectureType} z "${lecture.name}"`;
+      const room = ` w sali ${lecture.room}`;
+      const lecturer = ` z ${lecture.lecturer}`;
+      return prepareTextMessage(
+        `W godzinach ${time} masz${lecture.name ? lectureName : lectureType}${
+          lecture.lecturer ? lecturer : ''
+        }${lecture.room ? room : ''}`
+      );
+    }
+  },
+  TRY_SHOW_SCHEDULE: {
+    triggers: [MessageResponseName.TRY_SHOW_SCHEDULE, 'gdzie mamy?', 'gdziemamy', 'gdzie mamy'],
+    content: data => {
+      if (data.user.groups.length === 0) {
+        return messageResponses['NOT_CONFIGURED'].content();
+      } else {
+        return messageResponses['SHOW_SCHEDULE'].content(data);
       }
     }
   },
   GROUP_FOUND: {
-    triggers: [],
+    triggers: [MessageResponseName.GROUP_FOUND],
     content: () =>
       prepareQuickRepliesMessage('Dodano pomyślnie grupę', [
         quickReply('Gdzie mamy?', 'Gdzie mamy?')
       ])
   },
   PLEASE_SPECIFY_GROUP: {
-    triggers: [],
+    triggers: [MessageResponseName.PLEASE_SPECIFY_GROUP],
     content: groups =>
       prepareQuickRepliesMessage(
         'Znaleziono kilka pasujących grup. Czy należysz do którejś z nich?',
         groups.map(group => quickReply(group.name, group.name))
       )
   },
+  HANDLE_GROUP_SELECTION: {
+    triggers: [],
+    content: ({ user, groupName }) => {
+      apiFindGroup(groupName)
+        .then(groups => {
+          if (groups.length === 0) {
+            sendMessage(user.senderPsid, messageResponses['NO_MATCHING_GROUPS'].content());
+            user.addMessagingHistoryRecord(MessageResponseName['CONFIGURE']);
+          } else if (groups.length === 1) {
+            user.addGroup(groups[0]);
+            sendMessage(user.senderPsid, messageResponses['GROUP_FOUND'].content());
+          } else {
+            sendMessage(user.senderPsid, messageResponses['PLEASE_SPECIFY_GROUP'].content(groups));
+            user.addMessagingHistoryRecord(MessageResponseName['CONFIGURE']);
+          }
+        })
+        .catch(error => {
+          console.log('>>groups<<', error);
+        });
+    }
+  },
   SEND_NUDES: {
-    triggers: ['send nudes'],
+    triggers: [MessageResponseName.SEND_NUDES, 'send nudes'],
     content: () =>
       prepareImageMessage(
         'https://www.facebook.com/gdzie.mamy/photos/a.2164045370590380/2164045387257045'
       )
   },
   NO_MATCHING_GROUPS: {
-    triggers: [],
+    triggers: [MessageResponseName.NO_MATCHING_GROUPS],
     content: () =>
-      prepareButtonMessage(
-        'Nie znaleziono pasującej grupy, wpisz poprawną nazwę grupy.',
-        [buttonOpenSchedule]
-      )
+      prepareButtonMessage('Nie znaleziono pasującej grupy, wpisz poprawną nazwę grupy.', [
+        buttonOpenSchedule
+      ])
   },
   CONFIGURE: {
-    triggers: ['skonfiguruj'],
-    content: data => {
-      return prepareButtonMessage(
-        'Wpisz teraz swoją grupę (najlepiej skopiuj ją z planu zajęć)',
-        [buttonOpenSchedule]
-      );
-    }
-  },
-  SHOW_SENDER_ID: {
-    triggers: ['!$'],
-    content: data => prepareTextMessage(data.user.senderPsid)
+    triggers: [MessageResponseName.CONFIGURE, 'skonfiguruj'],
+    content: data =>
+      prepareButtonMessage('Wpisz teraz swoją grupę (najlepiej skopiuj ją z planu zajęć)', [
+        buttonOpenSchedule
+      ])
   },
   HOW_CAN_I_HELP_YOU: {
-    triggers: [],
+    triggers: [MessageResponseName.HOW_CAN_I_HELP_YOU],
     content: () =>
-      prepareTextMessage('W czym mogę pomóc?', {
-        quick_replies: [
-          {
-            content_type: 'text',
-            title: 'Gdzie mamy?',
-            payload: 'Gdzie mamy?'
-          },
-          {
-            content_type: 'text',
-            title: 'Skonfiguruj',
-            payload: 'Skonfiguruj'
-          }
-        ]
-      })
+      prepareQuickRepliesMessage('W czym mogę pomóc?', [
+        quickReply('Gdzie mamy?'),
+        quickReply('Skonfiguruj')
+      ])
   }
 };
 
 const userRepo = new UserRepo();
 
 function handleMessage(senderPsid, receivedMessage) {
-  console.log(receivedMessage);
   const messageText = receivedMessage.text;
   const messageResponseName = findMessageResponseNameByTrigger(messageText);
 
@@ -143,7 +170,6 @@ function handleMessage(senderPsid, receivedMessage) {
 }
 
 function handlePostback(senderPsid, receivedPostback) {
-  console.log(receivedPostback);
   const messageText = receivedPostback.payload || receivedPostback.text;
   const messageResponseName = findMessageResponseNameByTrigger(messageText);
 
@@ -169,53 +195,38 @@ function handlePostback(senderPsid, receivedPostback) {
 }
 
 function handleUnpredictedMessage(user, message) {
-  console.log('unpredicted', message);
   if (user.getLastMessagingHistoryRecord() === MessageResponseName.CONFIGURE) {
-    apiFindGroup(message, groups => {
-      if (groups.length === 1) {
-        user.addGroup(groups[0]);
-        sendMessage(user.senderPsid, messageResponses['GROUP_FOUND'].content());
-      } else if (groups.length > 1 && groups.length <= 3) {
-        sendMessage(
-          user.senderPsid,
-          messageResponses['PLEASE_SPECIFY_GROUP'].content(groups)
-        );
-        user.addMessagingHistoryRecord(MessageResponseName.CONFIGURE);
-      } else {
-        sendMessage(
-          user.senderPsid,
-          messageResponses['NO_MATCHING_GROUPS'].content()
-        );
-        user.addMessagingHistoryRecord(MessageResponseName.CONFIGURE);
-      }
-    });
-  } else {
     sendMessage(
       user.senderPsid,
-      messageResponses['HOW_CAN_I_HELP_YOU'].content()
+      messageResponses['HANDLE_GROUP_SELECTION'].content({ user, groupName: message })
     );
+  } else {
+    sendMessage(user.senderPsid, messageResponses['HOW_CAN_I_HELP_YOU'].content());
   }
 }
 
 const apiUrl = 'https://gdziemamy.jsthats.me/api';
 // API requests
 function apiFindGroup(groupName, callback) {
-  request(`${apiUrl}/groups/${groupName}`, (err, res, data) => {
-    console.log('[GdzieMamy? API]', err, data);
-    if (!err) {
-      callback(JSON.parse(data));
-    } else {
-      callback(null, err);
-    }
+  return new Promise((resolve, reject) => {
+    request(`${apiUrl}/groups/${encodeURIComponent(groupName)}/5`, (err, res, data) => {
+      console.log('[GdzieMamy? API]', err, data);
+      if (!err) {
+        resolve(JSON.parse(data));
+      } else {
+        reject(err);
+      }
+    });
   });
 }
-function apiFindSchedule(groupId, callback) {
-  request(`${apiUrl}/plans/${groupId}/next`, (err, res, data) => {
-    if (!err) {
-      callback(JSON.parse(data));
-    } else {
-      callback(null, err);
-    }
+function apiFindSchedule(groupId) {
+  return new Promise((resolve, reject) => {
+    request(`${apiUrl}/plans/${groupId}/today/next`, (err, res, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(JSON.parse(data));
+    });
   });
 }
 
@@ -296,16 +307,9 @@ function findMessageResponseNameByTrigger(trigger) {
     return;
   }
   return Object.keys(messageResponses).find(name =>
-    messageResponses[name].triggers.includes(trigger.toLowerCase())
-  );
-}
-
-function findResponseByTrigger(trigger) {
-  const messageResponseName = findMessageResponseNameByTrigger(trigger);
-
-  return (
-    messageResponses[messageResponseName] ||
-    messageResponses['HOW_CAN_I_HELP_YOU']
+    messageResponses[name].triggers
+      .map(value => value.toLowerCase())
+      .includes(trigger.toLowerCase())
   );
 }
 
@@ -320,7 +324,7 @@ const buttonOpenSchedule = {
 const quickReply = (text, payload) => ({
   content_type: 'text',
   title: text,
-  payload
+  payload: payload || text
 });
 
 module.exports = { handleMessage, handlePostback };
