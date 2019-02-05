@@ -1,8 +1,9 @@
 'use strict';
 
 const express = require('express'),
-  router = express.Router(),
-  messaging = require('../messaging');
+  router = express.Router();
+
+const { Messaging } = require('../classes/Messaging');
 
 router.post('/', (req, res) => {
   let body = req.body;
@@ -17,9 +18,9 @@ router.post('/', (req, res) => {
     console.log(webhookEvent);
 
     if (webhookEvent.message) {
-      messaging.handleMessage(senderPsid, webhookEvent.message);
+      Messaging.handleMessage(senderPsid, webhookEvent.message);
     } else if (webhookEvent.postback) {
-      messaging.handlePostback(senderPsid, webhookEvent.postback);
+      Messaging.handlePostback(senderPsid, webhookEvent.postback);
     }
   });
 

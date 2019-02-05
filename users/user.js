@@ -1,10 +1,10 @@
 'user strict';
 
 class User {
-  constructor(senderPsid) {
+  constructor(senderPsid, groups, botMessagingHistory) {
     this.senderPsid = senderPsid;
-    this.groups = [];
-    this.botMessagingHistory = [];
+    this.groups = groups || [];
+    this.botMessagingHistory = botMessagingHistory || [];
   }
 
   addGroup(groupName) {
@@ -13,11 +13,9 @@ class User {
 
   addMessagingHistoryRecord(responseName) {
     this.botMessagingHistory.unshift(responseName);
-    console.log('history', responseName, this.botMessagingHistory);
   }
 
   getLastMessagingHistoryRecord() {
-    // console.log('history', this.botMessagingHistory);
     return this.botMessagingHistory[0];
   }
 }

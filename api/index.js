@@ -5,7 +5,7 @@ const express = require('express'),
   request = require('request'),
   xml2json = require('xml2json');
 
-const returnNullIfObjectEmpty = require('../helpers/return-null-if-object-empty');
+const { Helpers } = require('../classes/Helpers');
 
 const apiUrl = 'http://planzajec.uek.krakow.pl';
 
@@ -129,10 +129,10 @@ const parseSchedule = activity => ({
   date: activity['termin'],
   startTime: activity['od-godz'],
   endTime: activity['do-godz'],
-  name: returnNullIfObjectEmpty(activity['przedmiot']),
-  type: returnNullIfObjectEmpty(activity['typ']),
+  name: Helpers.returnNullIfObjectEmpty(activity['przedmiot']),
+  type: Helpers.returnNullIfObjectEmpty(activity['typ']),
   lecturer: activity['nauzyciel'] ? activity['nauczyciel']['$t'] : null,
-  room: returnNullIfObjectEmpty(activity['sala'])
+  room: Helpers.returnNullIfObjectEmpty(activity['sala'])
 });
 
 const convertXMLToJSON = rawXML => JSON.parse(xml2json.toJson(rawXML));

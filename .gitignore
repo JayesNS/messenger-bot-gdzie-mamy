@@ -1,3 +1,4 @@
 node_modules
 *.log
 page-access-token.js
+data/users.json

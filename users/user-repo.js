@@ -1,15 +1,29 @@
 'use strict';
 
-const fs = require('fs');
+const fs = require('fs'),
+  path = require('path'),
+  User = require('./user');
 
-const repoFileLocation = './data/user-repo.json';
+const usersDataPath = path.join(__dirname, '../data/users.json');
 class UserRepo {
   constructor() {
-    this.users = [];
+    this.users = {};
+    this.load()
+      .then(users => {
+        users = Object.keys(users)
+          .map(senderPsid => users[senderPsid])
+          .map(user => new User(user.senderPsid, user.groups, user.botMessagingHistory));
+
+        users.forEach(user => (this.users[user.senderPsid] = user));
+      })
+      .catch(error => {
+        this.save(this.users);
+      });
   }
 
   addUser(user) {
-    return (this.users[user.senderPsid] = user);
+    this.updateUser(user);
+    return user;
   }
 
   getUser(senderPsid) {
@@ -18,6 +32,9 @@ class UserRepo {
 
   updateUser(user) {
     this.users[user.senderPsid] = user;
+    this.save(this.users)
+      .then(data => {})
+      .catch(error => {});
   }
 
   hasUser(senderPsid) {
@@ -25,10 +42,31 @@ class UserRepo {
   }
 
   load() {
-    console.log('load repo', this.users);
+    return new Promise((resolve, reject) => {
+      fs.exists(usersDataPath, exists => {
+        if (!exists) {
+          reject();
+        } else {
+          fs.readFile(usersDataPath, 'utf-8', (err, data) => {
+            if (err || !data) {
+              reject(err);
+            }
+            resolve(JSON.parse(data));
+          });
+        }
+      });
+    });
   }
-  save() {
-    console.log('save repo', this.users);
+  save(users) {
+    return new Promise((resolve, reject) => {
+      fs.writeFile(usersDataPath, JSON.stringify(users), 'utf-8', (err, saved, data) => {
+        if (err) {
+          reject(err);
+        }
+
+        resolve(data);
+      });
+    });
   }
 }
 
