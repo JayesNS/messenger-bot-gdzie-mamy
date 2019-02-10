@@ -1,10 +1,7 @@
 `use strict`;
 
 const { User, UserRepo } = require('../users');
-const { ApiHandler } = require('./ApiHandler');
-const { Templates } = require('./Templates');
-const { Helpers } = require('./Helpers');
-const { Button } = require('./Button');
+const { ApiHandler, Button, Template, Helpers } = require('./');
 const request = require('request');
 
 const PAGE_ACCESS_TOKEN = require('./../page-access-token').token;
@@ -20,15 +17,16 @@ const MessageName = {
   NOT_CONFIGURED: 'NOT_CONFIGURED',
   TRY_SHOW_SCHEDULE: 'TRY_SHOW_SCHEDULE',
   NO_LECTURES_TODAY: 'NO_LECTURES_TODAY',
-  HANDLE_GROUP_SELECTION: 'HANDLE_GROUP_SELECTION'
+  HANDLE_GROUP_SELECTION: 'HANDLE_GROUP_SELECTION',
+  DISPLAY_NEXT_LECTURE: 'DISPLAY_NEXT_LECTURE'
 };
 
 const Messages = {
   NOT_CONFIGURED: {
     triggers: [MessageName.NOT_CONFIGURED],
     content: () =>
-      Templates.quickRepliesMessage('Nie należysz do żadnej grupy.', [
-        Templates.createQuickReply('Skonfiguruj')
+      Template.quickRepliesMessage('Nie należysz do żadnej grupy.', [
+        Template.createQuickReply('Skonfiguruj')
       ])
   },
   SHOW_SCHEDULE: {
@@ -54,21 +52,36 @@ const Messages = {
   },
   NO_LECTURES_TODAY: {
     triggers: [MessageName.NO_LECTURES_TODAY],
-    content: () => Templates.textMessage('Nie masz dziś żadnych zajęć')
+    content: () => Template.textMessage('Nie masz dziś żadnych zajęć')
   },
   DISPLAY_SCHEDULE: {
     triggers: [MessageName.DISPLAY_SCHEDULE],
     content: lecture => {
-      const time = `${lecture.startTime}-${lecture.endTime}`;
-      const lectureType = ` ${lecture.type}`;
-      const lectureName = `${lectureType} z "${lecture.name}"`;
-      const room = ` w sali ${lecture.room}`;
-      const lecturer = ` z ${lecture.lecturer}`;
-      return Templates.textMessage(
-        `W godzinach ${time} masz${lecture.name ? lectureName : lectureType}${
-          lecture.lecturer ? lecturer : ''
-        }${lecture.room ? room : ''}`
-      );
+      const isLectureToday = Helpers.compareOnlyDates(lecture.date, lecture.queryDateTime);
+      if (isLectureToday) {
+        const time = `${lecture.startTime}-${lecture.endTime}`;
+        const lectureType = ` ${lecture.type}`;
+        const lectureName = `${lectureType} z "${lecture.name}"`;
+        const room = ` w sali ${lecture.room}`;
+        const lecturer = ` z ${lecture.lecturer}`;
+        return Template.textMessage(
+          `W godzinach ${time} masz${lecture.name ? lectureName : lectureType}${
+            lecture.lecturer ? lecturer : ''
+          }${lecture.room ? room : ''}`
+        );
+      } else {
+        return Messages['DISPLAY_NEXT_LECTURE'].content(lecture);
+      }
+    }
+  },
+  DISPLAY_NEXT_LECTURE: {
+    triggers: [MessageName.DISPLAY_NEXT_LECTURE],
+    content: lecture => {
+      if (lecture) {
+        return Template.textMessage(`Następne zajęcia masz ${lecture.date}`);
+      } else {
+        return Messages['NO_LECTURES_TODAY'].content();
+      }
     }
   },
   TRY_SHOW_SCHEDULE: {
@@ -85,17 +98,17 @@ const Messages = {
     triggers: [MessageName.GROUP_FOUND],
     content: user => {
       userRepo.updateUser(user);
-      return Templates.quickRepliesMessage('Dodano pomyślnie grupę', [
-        Templates.createQuickReply('Gdzie mamy?', 'Gdzie mamy?')
+      return Template.quickRepliesMessage('Dodano pomyślnie grupę', [
+        Template.createQuickReply('Gdzie mamy?', 'Gdzie mamy?')
       ]);
     }
   },
   PLEASE_SPECIFY_GROUP: {
     triggers: [MessageName.PLEASE_SPECIFY_GROUP],
     content: groups =>
-      Templates.quickRepliesMessage(
+      Template.quickRepliesMessage(
         'Znaleziono kilka pasujących grup. Czy należysz do którejś z nich?',
-        groups.map(group => Templates.createQuickReply(group.name, group.name))
+        groups.map(group => Template.createQuickReply(group.name, group.name))
       )
   },
   HANDLE_GROUP_SELECTION: {
@@ -126,28 +139,30 @@ const Messages = {
   NO_MATCHING_GROUPS: {
     triggers: [MessageName.NO_MATCHING_GROUPS],
     content: () =>
-      Templates.buttonMessage('Nie znaleziono pasującej grupy, wpisz poprawną nazwę grupy.', [
+      Template.buttonMessage('Nie znaleziono pasującej grupy, wpisz poprawną nazwę grupy.', [
         Button.openSchedule()
       ])
   },
   CONFIGURE: {
     triggers: [MessageName.CONFIGURE, 'skonfiguruj'],
     content: () =>
-      Templates.buttonMessage('Wpisz teraz swoją grupę (najlepiej skopiuj ją z planu zajęć)', [
+      Template.buttonMessage('Wpisz teraz swoją grupę (najlepiej skopiuj ją z planu zajęć)', [
         Button.openSchedule()
       ])
   },
   HOW_CAN_I_HELP_YOU: {
     triggers: [MessageName.HOW_CAN_I_HELP_YOU],
     content: () =>
-      Templates.quickRepliesMessage('W czym mogę pomóc?', [
-        Templates.createQuickReply('Gdzie mamy?'),
-        Templates.createQuickReply('Skonfiguruj')
+      Template.quickRepliesMessage('W czym mogę pomóc?', [
+        Template.createQuickReply('Gdzie mamy?'),
+        Template.createQuickReply('Skonfiguruj')
       ])
   }
 };
 const userRepo = new UserRepo();
-const apiHandler = new ApiHandler('https://gdziemamy.jsthats.me/api');
+const currentTime = new Date('2019-01-14T18:15');
+const apiHandler = new ApiHandler('http://localhost:1337/api', currentTime);
+// const apiHandler = new ApiHandler('https://gdziemamy.jsthats.me/api');
 
 class Messaging {
   static handleMessage(senderPsid, receivedMessage) {
@@ -162,14 +177,14 @@ class Messaging {
     }
 
     if (!messageResponseName) {
-      Messaging.handleUnpredictedMessage(user, messageText);
+      this.handleUnpredictedMessage(user, messageText);
     } else {
       const payload = { user, message: messageText };
 
       const messageResponse = Messages[messageResponseName];
 
       if (messageResponse.content(payload)) {
-        Messaging.sendMessage(senderPsid, messageResponse.content(payload));
+        this.sendMessage(senderPsid, messageResponse.content(payload));
       }
     }
     user.addMessagingHistoryRecord(messageResponseName);
@@ -177,7 +192,7 @@ class Messaging {
 
   static handlePostback(senderPsid, receivedPostback) {
     const messageText = receivedPostback.payload || receivedPostback.text;
-    const messageResponseName = Messaging.findMessageResponseNameByTrigger(messageText);
+    const messageResponseName = this.findMessageResponseNameByTrigger(messageText);
 
     let user;
     if (!userRepo.hasUser(senderPsid)) {
@@ -187,14 +202,14 @@ class Messaging {
     }
 
     if (!messageResponseName) {
-      handleUnpredictedMessage(user, messageText);
+      this.handleUnpredictedMessage(user, messageText);
     } else {
       const payload = { user, message: messageText };
 
       const messageResponse = Messages[messageResponseName];
 
       if (messageResponse.content(payload)) {
-        Messaging.sendMessage(senderPsid, messageResponse.content(payload));
+        this.sendMessage(senderPsid, messageResponse.content(payload));
       }
     }
     user.addMessagingHistoryRecord(messageResponseName);
@@ -202,12 +217,12 @@ class Messaging {
 
   static handleUnpredictedMessage(user, message) {
     if (user.getLastMessagingHistoryRecord() === MessageName.CONFIGURE) {
-      Messaging.sendMessage(
+      this.sendMessage(
         user.senderPsid,
         Messages['HANDLE_GROUP_SELECTION'].content({ user, groupName: message })
       );
     } else {
-      Messaging.sendMessage(user.senderPsid, Messages['HOW_CAN_I_HELP_YOU'].content());
+      this.sendMessage(user.senderPsid, Messages['HOW_CAN_I_HELP_YOU'].content());
     }
   }
 
@@ -215,11 +230,24 @@ class Messaging {
     if (typeof trigger !== 'string') {
       return;
     }
-    return Object.keys(Messages).find(name =>
-      Messages[name].triggers
+    return Object.keys(Messages).find(name => {
+      if (!Messages[name].triggers) return false;
+
+      return Messages[name].triggers
         .map(value => (typeof value === 'string' ? value.toLowerCase() : null))
-        .includes(trigger.toLowerCase())
-    );
+        .includes(trigger.toLowerCase());
+    });
+  }
+
+  static sendSenderAction(senderPsid, type) {
+    const responseBody = {
+      recipient: {
+        id: senderPsid
+      },
+      sender_action: type
+    };
+
+    this.makeRequest(responseBody);
   }
 
   static sendMessage(senderPsid, message) {
@@ -230,12 +258,16 @@ class Messaging {
       message
     };
 
+    this.makeRequest(responseBody);
+  }
+
+  static makeRequest(messageBody) {
     request(
       {
         uri: 'https://graph.facebook.com/v2.6/me/messages',
         qs: { access_token: PAGE_ACCESS_TOKEN },
         method: 'POST',
-        json: responseBody
+        json: messageBody
       },
       (err, res, body) => {
         console.log(body);

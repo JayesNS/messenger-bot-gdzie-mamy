@@ -3,8 +3,9 @@
 const request = require('request');
 
 class ApiHandler {
-  constructor(apiUrl) {
+  constructor(apiUrl, currentTime) {
     this.apiUrl = apiUrl;
+    this.currentTime = currentTime;
   }
 
   findGroup(groupName) {
@@ -22,12 +23,15 @@ class ApiHandler {
 
   findSchedule(groupId) {
     return new Promise((resolve, reject) => {
-      request(`${this.apiUrl}/plans/${groupId}/today/next`, (err, res, data) => {
-        if (err) {
-          reject(err);
+      request(
+        `${this.apiUrl}/plans/${groupId}/today/next/${this.currentTime}`,
+        (err, res, data) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(JSON.parse(data));
         }
-        resolve(JSON.parse(data));
-      });
+      );
     });
   }
 }

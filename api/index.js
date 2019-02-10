@@ -5,7 +5,7 @@ const express = require('express'),
   request = require('request'),
   xml2json = require('xml2json');
 
-const { Helpers } = require('../classes/Helpers');
+const { Helpers } = require('../classes');
 
 const apiUrl = 'http://planzajec.uek.krakow.pl';
 
@@ -45,24 +45,26 @@ router.get('/plans/:groupId', (req, res) => {
       handleRequestError(res, error || statusCode);
     });
 });
-router.get('/plans/:groupId/today', (req, res) => {
+router.get('/plans/:groupId/today/next/:time?', (req, res) => {
   const groupId = req.params.groupId;
+  const currentTime = req.params.time;
 
-  fetchSchedule(groupId, selectTodaysLectures)
-    .then(lectures => {
-      sendJSON(res, lectures);
+  fetchSchedule(createUrlToSchedule(groupId), selectNextLecture, new Date(currentTime))
+    .then(lecture => {
+      sendJSON(res, lecture);
     })
     .catch((error, statusCode) => {
       handleRequestError(res, error || statusCode);
     });
 });
-router.get('/plans/:groupId/today/next/:time?', (req, res) => {
+
+router.get('/plans/:groupId/today/:time?', (req, res) => {
   const groupId = req.params.groupId;
   const currentTime = req.params.time;
 
-  fetchSchedule(createUrlToSchedule(groupId), selectNextLecture, currentTime)
-    .then(lecture => {
-      sendJSON(res, lecture);
+  fetchSchedule(groupId, selectTodaysLectures, new Date(currentTime))
+    .then(lectures => {
+      sendJSON(res, lectures);
     })
     .catch((error, statusCode) => {
       handleRequestError(res, error || statusCode);
@@ -94,26 +96,30 @@ const selectOnlyGroups = data => data['plan-zajec']['zasob'].map(parseGroup);
 const selectMatchingGroups = (groups, groupName) =>
   selectOnlyGroups(groups).filter(group => filterLowercaseToIncludes(group.name, groupName));
 const selectLectures = data =>
-  []
+  new Array()
     .concat(data['plan-zajec']['zajecia'])
     .filter(filterNotEmpty)
     .map(parseSchedule);
-const selectTodaysLectures = data =>
-  selectLectures(data).filter(lecture => compareOnlyDates(new Date(), lecture.date));
+const selectTodaysLectures = (data, time) =>
+  selectLectures(data).filter(lecture => Helpers.compareOnlyDates(time, lecture.date));
 const selectNextLecture = (data, time) =>
-  selectTodaysLectures(data)
+  selectLectures(data)
     .map(lecture => ({
       ...lecture,
-      timeToLecture: timeDifference(
-        createTimestamp(lecture.date, lecture.endTime),
+      queryDateTime: time,
+      minutesToLecture: Helpers.timeDifferenceInMinutes(
+        Helpers.createTimestamp(lecture.date, lecture.startTime),
         time || new Date()
       )
     }))
-    .filter(lecture => lecture.timeToLecture > 0)[0] || {};
+    .filter(lecture => {
+      const ALLOWED_LATENESS_IN_MINUTES = 30;
+      return lecture.minutesToLecture > -ALLOWED_LATENESS_IN_MINUTES;
+    })[0] || {};
 
 // URLs
 const createUrlToGroupList = () => `${apiUrl}?typ=G&xml`;
-const createUrlToSchedule = groupId => `${apiUrl}?typ=G&id=${groupId}&okres=1&xml`;
+const createUrlToSchedule = groupId => `${apiUrl}?typ=G&id=${groupId}&okres=4&xml`;
 
 // Filters
 const filterNotEmpty = value => (value ? true : false);
@@ -131,7 +137,7 @@ const parseSchedule = activity => ({
   endTime: activity['do-godz'],
   name: Helpers.returnNullIfObjectEmpty(activity['przedmiot']),
   type: Helpers.returnNullIfObjectEmpty(activity['typ']),
-  lecturer: activity['nauzyciel'] ? activity['nauczyciel']['$t'] : null,
+  lecturer: activity['nauczyciel'] ? activity['nauczyciel']['$t'] : null,
   room: Helpers.returnNullIfObjectEmpty(activity['sala'])
 });
 
@@ -142,31 +148,13 @@ const handleRequestError = (res, predicate) => {
     res.status(503).send(error);
   }
 };
-const handleError = (error, statusCode, location) => {
-  return new Promise(resolve => {
+const handleError = (error, statusCode, location) =>
+  new Promise(resolve => {
     if (error || statusCode !== 200) {
       console.error(location, error);
       resolve(error);
     }
   });
-};
-
-const compareOnlyDates = (timestamp1, timestamp2) => {
-  const date1 = new Date(timestamp1);
-  const date2 = new Date(timestamp2);
-
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDay() === date2.getDay()
-  );
-};
-const timeDifference = (time1, time2) => {
-  return (new Date(time1).getTime() - new Date(time2).getTime()) / 1000 / 60;
-};
-const createTimestamp = (date, time) => {
-  return new Date(`${date}T${time}`);
-};
 
 function sendJSON(res, json) {
   res.status(200).json(json);

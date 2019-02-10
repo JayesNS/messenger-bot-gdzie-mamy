@@ -17,6 +17,7 @@ router.post('/', (req, res) => {
     const senderPsid = webhookEvent.sender.id;
     console.log(webhookEvent);
 
+    Messaging.sendSenderAction(senderPsid, 'typing_on');
     if (webhookEvent.message) {
       Messaging.handleMessage(senderPsid, webhookEvent.message);
     } else if (webhookEvent.postback) {

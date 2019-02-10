@@ -1,6 +1,6 @@
-`user strict`;
+`use strict`;
 
-class Templates {
+class Template {
   static createQuickReply(text, payload) {
     return {
       content_type: 'text',
@@ -55,4 +55,4 @@ class Templates {
   }
 }
 
-module.exports = { Templates };
+module.exports = { Template };
