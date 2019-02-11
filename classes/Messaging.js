@@ -13,7 +13,7 @@ const MessageName = {
   GROUP_FOUND: 'GROUP_FOUND',
   NO_MATCHING_GROUPS: 'NO_MATCHING_GROUPS',
   PLEASE_SPECIFY_GROUP: 'PLEASE_SPECIFY_GROUP',
-  SHOW_SCHEDULE: 'SHOW_SCHEDULE',
+  SHOW_NEAREST_SCHEDULE: 'SHOW_NEAREST_SCHEDULE',
   NOT_CONFIGURED: 'NOT_CONFIGURED',
   TRY_SHOW_SCHEDULE: 'TRY_SHOW_SCHEDULE',
   NO_LECTURES_TODAY: 'NO_LECTURES_TODAY',
@@ -29,11 +29,11 @@ const Messages = {
         Template.createQuickReply('Skonfiguruj')
       ])
   },
-  SHOW_SCHEDULE: {
-    triggers: [MessageName.SHOW_SCHEDULE, 'SHOW_SCHEDULE'],
+  SHOW_NEAREST_SCHEDULE: {
+    triggers: [MessageName.SHOW_NEAREST_SCHEDULE],
     content: data => {
       apiHandler
-        .findSchedule(data.user.groups[0].id)
+        .findTodaysLecture(data.user.groups[0].id, 'later')
         .then(lecture => {
           console.log(typeof Helpers.returnNullIfObjectEmpty);
           if (Helpers.returnNullIfObjectEmpty(lecture)) {
@@ -46,7 +46,7 @@ const Messages = {
           }
         })
         .catch(error => {
-          console.error('error', error);
+          console.trace('error', error);
         });
     }
   },
@@ -75,10 +75,11 @@ const Messages = {
     }
   },
   DISPLAY_NEXT_LECTURE: {
-    triggers: [MessageName.DISPLAY_NEXT_LECTURE],
+    triggers: [MessageName.DISPLAY_NEXT_LECTURE, 'następne', 'a następne'],
     content: lecture => {
       if (lecture) {
-        return Template.textMessage(`Następne zajęcia masz ${lecture.date}`);
+        console.log(lecture);
+        return Template.textMessage(`Następne zajęcia masz ${lecture.date} o ${lecture.startTime}`);
       } else {
         return Messages['NO_LECTURES_TODAY'].content();
       }
@@ -90,7 +91,7 @@ const Messages = {
       if (data.user.groups.length === 0) {
         return Messages['NOT_CONFIGURED'].content();
       } else {
-        return Messages['SHOW_SCHEDULE'].content(data);
+        return Messages['SHOW_NEAREST_SCHEDULE'].content(data);
       }
     }
   },
@@ -160,7 +161,7 @@ const Messages = {
   }
 };
 const userRepo = new UserRepo();
-const currentTime = new Date('2019-01-14T18:15');
+const currentTime = new Date('2019-02-20T08:15');
 const apiHandler = new ApiHandler('http://localhost:1337/api', currentTime);
 // const apiHandler = new ApiHandler('https://gdziemamy.jsthats.me/api');
 

@@ -1,6 +1,7 @@
 `use strict`;
 
 const request = require('request');
+const { Helpers } = require('./');
 
 class ApiHandler {
   constructor(apiUrl, currentTime) {
@@ -21,17 +22,20 @@ class ApiHandler {
     });
   }
 
-  findSchedule(groupId) {
+  findTodaysLecture(groupId, offset) {
+    if (offset !== 'nearest' && offset !== 'later') {
+      return Promise.reject();
+    }
+
     return new Promise((resolve, reject) => {
-      request(
-        `${this.apiUrl}/plans/${groupId}/today/next/${this.currentTime}`,
-        (err, res, data) => {
-          if (err) {
-            reject(err);
-          }
-          resolve(JSON.parse(data));
+      const url = `${this.apiUrl}/group/${groupId}/lecture/${offset}/${this.currentTime || ''}`;
+      console.log({ url });
+      request(url, (err, res, data) => {
+        if (err) {
+          reject(err);
         }
-      );
+        resolve(JSON.parse(data));
+      });
     });
   }
 }

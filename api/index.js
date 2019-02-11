@@ -18,15 +18,14 @@ router.get('/groups', (req, res) => {
       handleRequestError(res, error || statusCode);
     });
 });
-router.get('/groups/:groupName/:notMoreGroupsThan?', (req, res) => {
-  const NOT_MORE_GROUPS_THAN = 3;
-  // If groups length passes this number, API will send empty array
-  const notMoreGroupsThan = req.params.notMoreGroupsThan || NOT_MORE_GROUPS_THAN;
+router.get('/groups/:groupName/:groupsLimit?', (req, res) => {
+  const GROUPS_LIMIT = 3;
+  const groupsLimit = req.params.groupsLimit || GROUPS_LIMIT;
   const groupName = decodeURIComponent(req.params.groupName);
 
   fetchGroupList(selectMatchingGroups, groupName)
     .then(groups => {
-      const limitedGroups = groups.length > notMoreGroupsThan ? [] : groups;
+      const limitedGroups = groups.length > groupsLimit ? [] : groups;
 
       sendJSON(res, limitedGroups);
     })
@@ -34,10 +33,11 @@ router.get('/groups/:groupName/:notMoreGroupsThan?', (req, res) => {
       handleRequestError(res, error || statusCode);
     });
 });
-router.get('/plans/:groupId', (req, res) => {
+router.get('/group/:groupId/lectures/:limit?', (req, res) => {
   const groupId = req.params.groupId;
+  const limit = req.params.limit;
 
-  fetchSchedule(groupId, selectLectures)
+  fetchSchedule(groupId, selectLectures, { limit })
     .then(lectures => {
       sendJSON(res, lectures);
     })
@@ -45,26 +45,17 @@ router.get('/plans/:groupId', (req, res) => {
       handleRequestError(res, error || statusCode);
     });
 });
-router.get('/plans/:groupId/today/next/:time?', (req, res) => {
+router.get('/group/:groupId/lecture/:offset(nearest|later)/:time?', (req, res) => {
   const groupId = req.params.groupId;
-  const currentTime = req.params.time;
+  const offset = req.params.offset;
+  const time = new Date(Date.parse(req.params.time) || Date.now());
 
-  fetchSchedule(createUrlToSchedule(groupId), selectNextLecture, new Date(currentTime))
+  fetchSchedule(createUrlToSchedule(groupId), selectNextLectureFromDate, {
+    time,
+    numberOfLecture: offset === 'later' ? 1 : 0
+  })
     .then(lecture => {
       sendJSON(res, lecture);
-    })
-    .catch((error, statusCode) => {
-      handleRequestError(res, error || statusCode);
-    });
-});
-
-router.get('/plans/:groupId/today/:time?', (req, res) => {
-  const groupId = req.params.groupId;
-  const currentTime = req.params.time;
-
-  fetchSchedule(groupId, selectTodaysLectures, new Date(currentTime))
-    .then(lectures => {
-      sendJSON(res, lectures);
     })
     .catch((error, statusCode) => {
       handleRequestError(res, error || statusCode);
@@ -95,31 +86,41 @@ function fetchSchedule(groupId, selector, selectorData) {
 const selectOnlyGroups = data => data['plan-zajec']['zasob'].map(parseGroup);
 const selectMatchingGroups = (groups, groupName) =>
   selectOnlyGroups(groups).filter(group => filterLowercaseToIncludes(group.name, groupName));
-const selectLectures = data =>
-  new Array()
+const selectLectures = data => {
+  return new Array()
     .concat(data['plan-zajec']['zajecia'])
     .filter(filterNotEmpty)
-    .map(parseSchedule);
-const selectTodaysLectures = (data, time) =>
-  selectLectures(data).filter(lecture => Helpers.compareOnlyDates(time, lecture.date));
-const selectNextLecture = (data, time) =>
-  selectLectures(data)
-    .map(lecture => ({
-      ...lecture,
-      queryDateTime: time,
-      minutesToLecture: Helpers.timeDifferenceInMinutes(
-        Helpers.createTimestamp(lecture.date, lecture.startTime),
-        time || new Date()
-      )
-    }))
-    .filter(lecture => {
-      const ALLOWED_LATENESS_IN_MINUTES = 30;
-      return lecture.minutesToLecture > -ALLOWED_LATENESS_IN_MINUTES;
-    })[0] || {};
+    .map(parseActivity);
+};
+const selectLecturesFromDate = (data, { time }) =>
+  selectLectures(data).filter(lecture => {
+    return Helpers.compareOnlyDates(time, lecture.date);
+  });
+const selectNextLectureFromDate = (data, { time, numberOfLecture }) => {
+  console.log({ numberOfLecture });
+  return (
+    selectLecturesFromDate(data, { time })
+      .map((lecture, index) => {
+        return {
+          ...lecture,
+          queryDateTime: time,
+          minutesToLecture: Helpers.timeDifferenceInMinutes(
+            Helpers.createTimestamp(lecture.date, lecture.startTime),
+            time || new Date()
+          ),
+          lectureToday: index + 1
+        };
+      })
+      .filter(lecture => {
+        const LECTURE_LENGTH_IN_MINUTES = 90;
+        return lecture.minutesToLecture > -LECTURE_LENGTH_IN_MINUTES;
+      })[numberOfLecture] || {}
+  );
+};
 
 // URLs
 const createUrlToGroupList = () => `${apiUrl}?typ=G&xml`;
-const createUrlToSchedule = groupId => `${apiUrl}?typ=G&id=${groupId}&okres=4&xml`;
+const createUrlToSchedule = groupId => `${apiUrl}?typ=G&id=${groupId}&okres=1&xml`;
 
 // Filters
 const filterNotEmpty = value => (value ? true : false);
@@ -131,13 +132,13 @@ const parseGroup = group => ({
   id: group['id'],
   name: group['nazwa']
 });
-const parseSchedule = activity => ({
+const parseActivity = activity => ({
   date: activity['termin'],
   startTime: activity['od-godz'],
   endTime: activity['do-godz'],
   name: Helpers.returnNullIfObjectEmpty(activity['przedmiot']),
   type: Helpers.returnNullIfObjectEmpty(activity['typ']),
-  lecturer: activity['nauczyciel'] ? activity['nauczyciel']['$t'] : null,
+  person: activity['nauczyciel'] ? activity['nauczyciel']['$t'] : null,
   room: Helpers.returnNullIfObjectEmpty(activity['sala'])
 });
 
