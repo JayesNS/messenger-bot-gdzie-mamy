@@ -97,14 +97,13 @@ const selectLecturesFromDate = (data, { time }) =>
     return Helpers.compareOnlyDates(time, lecture.date);
   });
 const selectNextLectureFromDate = (data, { time, numberOfLecture }) => {
-  console.log({ numberOfLecture });
   return (
     selectLecturesFromDate(data, { time })
       .map((lecture, index) => {
         return {
           ...lecture,
           queryDateTime: time,
-          minutesToLecture: Helpers.timeDifferenceInMinutes(
+          minutesToStart: Helpers.timeDifferenceInMinutes(
             Helpers.createTimestamp(lecture.date, lecture.startTime),
             time || new Date()
           ),
@@ -113,7 +112,7 @@ const selectNextLectureFromDate = (data, { time, numberOfLecture }) => {
       })
       .filter(lecture => {
         const LECTURE_LENGTH_IN_MINUTES = 90;
-        return lecture.minutesToLecture > -LECTURE_LENGTH_IN_MINUTES;
+        return lecture.minutesToStart > -LECTURE_LENGTH_IN_MINUTES;
       })[numberOfLecture] || {}
   );
 };

@@ -1,7 +1,7 @@
 `use strict`;
 
 const request = require('request');
-const { Helpers } = require('./');
+const { Helpers } = require('./Helpers');
 
 class ApiHandler {
   constructor(apiUrl, currentTime) {
@@ -12,7 +12,6 @@ class ApiHandler {
   findGroup(groupName) {
     return new Promise((resolve, reject) => {
       request(`${this.apiUrl}/groups/${encodeURIComponent(groupName)}/5`, (err, res, data) => {
-        console.log('[GdzieMamy? API]', err, data);
         if (!err) {
           resolve(JSON.parse(data));
         } else {
@@ -29,12 +28,12 @@ class ApiHandler {
 
     return new Promise((resolve, reject) => {
       const url = `${this.apiUrl}/group/${groupId}/lecture/${offset}/${this.currentTime || ''}`;
-      console.log({ url });
       request(url, (err, res, data) => {
         if (err) {
           reject(err);
         }
-        resolve(JSON.parse(data));
+
+        resolve(Helpers.returnNullIfObjectEmpty(JSON.parse(data)));
       });
     });
   }

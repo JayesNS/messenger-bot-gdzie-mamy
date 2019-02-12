@@ -13,155 +13,17 @@ const MessageName = {
   GROUP_FOUND: 'GROUP_FOUND',
   NO_MATCHING_GROUPS: 'NO_MATCHING_GROUPS',
   PLEASE_SPECIFY_GROUP: 'PLEASE_SPECIFY_GROUP',
-  SHOW_NEAREST_SCHEDULE: 'SHOW_NEAREST_SCHEDULE',
+  FIND_ACTIVITY: 'FIND_ACTIVITY',
   NOT_CONFIGURED: 'NOT_CONFIGURED',
   TRY_SHOW_SCHEDULE: 'TRY_SHOW_SCHEDULE',
+  SHOW_ACTIVITY: 'SHOW_ACTIVITY',
   NO_LECTURES_TODAY: 'NO_LECTURES_TODAY',
   HANDLE_GROUP_SELECTION: 'HANDLE_GROUP_SELECTION',
-  DISPLAY_NEXT_LECTURE: 'DISPLAY_NEXT_LECTURE'
+  SHOW_LECTURE_FROM_NEXT_DAYS: 'SHOW_LECTURE_FROM_NEXT_DAYS'
 };
 
-const Messages = {
-  NOT_CONFIGURED: {
-    triggers: [MessageName.NOT_CONFIGURED],
-    content: () =>
-      Template.quickRepliesMessage('Nie należysz do żadnej grupy.', [
-        Template.createQuickReply('Skonfiguruj')
-      ])
-  },
-  SHOW_NEAREST_SCHEDULE: {
-    triggers: [MessageName.SHOW_NEAREST_SCHEDULE],
-    content: data => {
-      apiHandler
-        .findTodaysLecture(data.user.groups[0].id, 'later')
-        .then(lecture => {
-          console.log(typeof Helpers.returnNullIfObjectEmpty);
-          if (Helpers.returnNullIfObjectEmpty(lecture)) {
-            Messaging.sendMessage(
-              data.user.senderPsid,
-              Messages['DISPLAY_SCHEDULE'].content(lecture)
-            );
-          } else {
-            Messaging.sendMessage(data.user.senderPsid, Messages['NO_LECTURES_TODAY'].content());
-          }
-        })
-        .catch(error => {
-          console.trace('error', error);
-        });
-    }
-  },
-  NO_LECTURES_TODAY: {
-    triggers: [MessageName.NO_LECTURES_TODAY],
-    content: () => Template.textMessage('Nie masz dziś żadnych zajęć')
-  },
-  DISPLAY_SCHEDULE: {
-    triggers: [MessageName.DISPLAY_SCHEDULE],
-    content: lecture => {
-      const isLectureToday = Helpers.compareOnlyDates(lecture.date, lecture.queryDateTime);
-      if (isLectureToday) {
-        const time = `${lecture.startTime}-${lecture.endTime}`;
-        const lectureType = ` ${lecture.type}`;
-        const lectureName = `${lectureType} z "${lecture.name}"`;
-        const room = ` w sali ${lecture.room}`;
-        const lecturer = ` z ${lecture.lecturer}`;
-        return Template.textMessage(
-          `W godzinach ${time} masz${lecture.name ? lectureName : lectureType}${
-            lecture.lecturer ? lecturer : ''
-          }${lecture.room ? room : ''}`
-        );
-      } else {
-        return Messages['DISPLAY_NEXT_LECTURE'].content(lecture);
-      }
-    }
-  },
-  DISPLAY_NEXT_LECTURE: {
-    triggers: [MessageName.DISPLAY_NEXT_LECTURE, 'następne', 'a następne'],
-    content: lecture => {
-      if (lecture) {
-        console.log(lecture);
-        return Template.textMessage(`Następne zajęcia masz ${lecture.date} o ${lecture.startTime}`);
-      } else {
-        return Messages['NO_LECTURES_TODAY'].content();
-      }
-    }
-  },
-  TRY_SHOW_SCHEDULE: {
-    triggers: [MessageName.TRY_SHOW_SCHEDULE, 'gdzie mamy?', 'gdziemamy', 'gdzie mamy'],
-    content: data => {
-      if (data.user.groups.length === 0) {
-        return Messages['NOT_CONFIGURED'].content();
-      } else {
-        return Messages['SHOW_NEAREST_SCHEDULE'].content(data);
-      }
-    }
-  },
-  GROUP_FOUND: {
-    triggers: [MessageName.GROUP_FOUND],
-    content: user => {
-      userRepo.updateUser(user);
-      return Template.quickRepliesMessage('Dodano pomyślnie grupę', [
-        Template.createQuickReply('Gdzie mamy?', 'Gdzie mamy?')
-      ]);
-    }
-  },
-  PLEASE_SPECIFY_GROUP: {
-    triggers: [MessageName.PLEASE_SPECIFY_GROUP],
-    content: groups =>
-      Template.quickRepliesMessage(
-        'Znaleziono kilka pasujących grup. Czy należysz do którejś z nich?',
-        groups.map(group => Template.createQuickReply(group.name, group.name))
-      )
-  },
-  HANDLE_GROUP_SELECTION: {
-    triggers: [MessageName.HANDLE_GROUP_SELECTION],
-    content: ({ user, groupName }) => {
-      apiHandler
-        .findGroup(groupName)
-        .then(groups => {
-          if (groups.length === 0) {
-            Messaging.sendMessage(user.senderPsid, Messages['NO_MATCHING_GROUPS'].content());
-            user.addMessagingHistoryRecord(MessageName['CONFIGURE']);
-          } else if (groups.length === 1) {
-            user.addGroup(groups[0]);
-            Messaging.sendMessage(user.senderPsid, Messages['GROUP_FOUND'].content(user));
-          } else {
-            Messaging.sendMessage(
-              user.senderPsid,
-              Messages['PLEASE_SPECIFY_GROUP'].content(groups)
-            );
-            user.addMessagingHistoryRecord(MessageName['CONFIGURE']);
-          }
-        })
-        .catch(error => {
-          console.log('>>groups<<', error);
-        });
-    }
-  },
-  NO_MATCHING_GROUPS: {
-    triggers: [MessageName.NO_MATCHING_GROUPS],
-    content: () =>
-      Template.buttonMessage('Nie znaleziono pasującej grupy, wpisz poprawną nazwę grupy.', [
-        Button.openSchedule()
-      ])
-  },
-  CONFIGURE: {
-    triggers: [MessageName.CONFIGURE, 'skonfiguruj'],
-    content: () =>
-      Template.buttonMessage('Wpisz teraz swoją grupę (najlepiej skopiuj ją z planu zajęć)', [
-        Button.openSchedule()
-      ])
-  },
-  HOW_CAN_I_HELP_YOU: {
-    triggers: [MessageName.HOW_CAN_I_HELP_YOU],
-    content: () =>
-      Template.quickRepliesMessage('W czym mogę pomóc?', [
-        Template.createQuickReply('Gdzie mamy?'),
-        Template.createQuickReply('Skonfiguruj')
-      ])
-  }
-};
 const userRepo = new UserRepo();
-const currentTime = new Date('2019-02-20T08:15');
+const currentTime = new Date('2019-02-20T11:20');
 const apiHandler = new ApiHandler('http://localhost:1337/api', currentTime);
 // const apiHandler = new ApiHandler('https://gdziemamy.jsthats.me/api');
 
@@ -232,9 +94,13 @@ class Messaging {
       return;
     }
     return Object.keys(Messages).find(name => {
-      if (!Messages[name].triggers) return false;
+      if (!Messages[name].trigger) return false;
 
-      return Messages[name].triggers
+      if (typeof Messages[name].trigger === 'function') {
+        return Messages[name].trigger(trigger);
+      }
+
+      return Messages[name].trigger
         .map(value => (typeof value === 'string' ? value.toLowerCase() : null))
         .includes(trigger.toLowerCase());
     });
@@ -271,10 +137,7 @@ class Messaging {
         json: messageBody
       },
       (err, res, body) => {
-        console.log(body);
-
         if (!err) {
-          console.log('message sent!');
         } else {
           console.error('Unable to send message:' + err);
         }
@@ -282,5 +145,157 @@ class Messaging {
     );
   }
 }
+
+function prepareActivityMessage(activity) {
+  const time = `${activity.startTime}-${activity.endTime}`;
+  const activityType = ` ${activity.type}`;
+  const activityName = `${activityType} z "${activity.name}"`;
+  const room = ` w sali ${activity.room}`;
+  const person = ` z ${activity.person}`;
+  return `W godzinach ${time} masz${activity.name ? activityName : activityType}${
+    activity.person ? person : ''
+  }${activity.room ? room : ''}`;
+}
+
+const Messages = {
+  NOT_CONFIGURED: {
+    trigger: [MessageName.NOT_CONFIGURED],
+    content: () =>
+      Template.quickRepliesMessage('Nie należysz do żadnej grupy.', [
+        Template.createQuickReply('Skonfiguruj')
+      ])
+  },
+  FIND_ACTIVITY: {
+    trigger: [MessageName.FIND_ACTIVITY],
+    content: ({ user, offset }) => {
+      apiHandler
+        .findTodaysLecture(user.groups[0].id, offset)
+        .then(activity => {
+          if (!activity) {
+            Messaging.sendMessage(user.senderPsid, Messages['NO_LECTURES_TODAY'].content());
+          }
+          const isActivityToday = Helpers.compareOnlyDates(activity.date, activity.queryDateTime);
+
+          console.log({ activity, isActivityToday });
+
+          if (
+            activity &&
+            isActivityToday &&
+            activity.lectureToday !== 1 &&
+            activity.minutesToStart > 0
+          ) {
+            Messaging.sendMessage(
+              user.senderPsid,
+              Template.textMessage(
+                `Masz jeszcze ${
+                  activity.minutesToStart
+                } minut do następnych zajęć. ${prepareActivityMessage(activity)}`
+              )
+            );
+          } else if (activity && isActivityToday) {
+            Messaging.sendMessage(
+              user.senderPsid,
+              Template.textMessage(prepareActivityMessage(activity))
+            );
+          }
+        })
+        .catch(error => {
+          console.trace('error', error);
+        });
+    }
+  },
+  NO_LECTURES_TODAY: {
+    trigger: [MessageName.NO_LECTURES_TODAY],
+    content: () => Template.textMessage('Nie masz dziś żadnych zajęć')
+  },
+  SHOW_LATER_LECTURE: {
+    trigger: text => new RegExp('(następni?e)|(później)|(potem)').test(text),
+    content: ({ user }) => Messages['FIND_ACTIVITY'].content({ user, offset: 'later' })
+  },
+  SHOW_LECTURE_FROM_NEXT_DAYS: {
+    trigger: [MessageName.SHOW_LECTURE_FROM_NEXT_DAYS, 'następne', 'a następne'],
+    content: ({ lecture }) => {
+      if (lecture) {
+        return Template.textMessage(`Następne zajęcia masz ${lecture.date} o ${lecture.startTime}`);
+      } else {
+        return Messages['NO_LECTURES_TODAY'].content();
+      }
+    }
+  },
+  TRY_SHOW_SCHEDULE: {
+    trigger: text => new RegExp('(gdzie ?mamy)|(teraz)').test(text),
+    content: ({ user }) => {
+      if (user.groups.length === 0) {
+        return Messages['NOT_CONFIGURED'].content();
+      } else {
+        return Messages['FIND_ACTIVITY'].content({ user, offset: 'nearest' });
+      }
+    }
+  },
+  GROUP_FOUND: {
+    trigger: [MessageName.GROUP_FOUND],
+    content: ({ user }) => {
+      userRepo.updateUser(user);
+      return Template.quickRepliesMessage('Dodano pomyślnie grupę', [
+        Template.createQuickReply('Gdzie mamy?', 'Gdzie mamy?')
+      ]);
+    }
+  },
+  PLEASE_SPECIFY_GROUP: {
+    trigger: [MessageName.PLEASE_SPECIFY_GROUP],
+    content: ({ groups }) =>
+      Template.quickRepliesMessage(
+        'Znaleziono kilka pasujących grup. Czy należysz do którejś z nich?',
+        groups.map(group => Template.createQuickReply(group.name, group.name))
+      )
+  },
+  HANDLE_GROUP_SELECTION: {
+    trigger: [MessageName.HANDLE_GROUP_SELECTION],
+    content: ({ user, groupName }) => {
+      apiHandler
+        .findGroup(groupName)
+        .then(groups => {
+          if (groups.length === 0) {
+            Messaging.sendMessage(user.senderPsid, Messages['NO_MATCHING_GROUPS'].content());
+            user.addMessagingHistoryRecord(MessageName['CONFIGURE']);
+          } else if (groups.length === 1) {
+            user.addGroup(groups[0]);
+            Messaging.sendMessage(user.senderPsid, Messages['GROUP_FOUND'].content({ user }));
+          } else {
+            Messaging.sendMessage(
+              user.senderPsid,
+              Messages['PLEASE_SPECIFY_GROUP'].content({ groups })
+            );
+            user.addMessagingHistoryRecord(MessageName['CONFIGURE']);
+          }
+        })
+        .catch(error => {
+          console.log('>>groups<<', error);
+        });
+    }
+  },
+  NO_MATCHING_GROUPS: {
+    trigger: [MessageName.NO_MATCHING_GROUPS],
+    content: () =>
+      Template.buttonMessage('Nie znaleziono pasującej grupy, wpisz poprawną nazwę grupy.', [
+        Button.openSchedule()
+      ])
+  },
+  CONFIGURE: {
+    trigger: [MessageName.CONFIGURE, 'skonfiguruj'],
+    content: () =>
+      Template.buttonMessage('Wpisz teraz swoją grupę (najlepiej skopiuj ją z planu zajęć)', [
+        Button.openSchedule()
+      ])
+  },
+  HOW_CAN_I_HELP_YOU: {
+    trigger: [MessageName.HOW_CAN_I_HELP_YOU],
+    content: () =>
+      Template.quickRepliesMessage('W czym mogę pomóc?', [
+        Template.createQuickReply('Gdzie mamy?'),
+        Template.createQuickReply('Skonfiguruj')
+      ])
+  }
+};
 
 module.exports = { MessageName, Messages, Messaging };
