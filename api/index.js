@@ -23,9 +23,12 @@ router.get('/groups/:groupName/:groupsLimit?', (req, res) => {
   const groupsLimit = req.params.groupsLimit || GROUPS_LIMIT;
   const groupName = decodeURIComponent(req.params.groupName);
 
+  console.log({ groupName });
+
   fetchGroupList(selectMatchingGroups, groupName)
     .then(groups => {
       const limitedGroups = groups.length > groupsLimit ? [] : groups;
+      console.log({ groups, limitedGroups });
 
       sendJSON(res, limitedGroups);
     })
@@ -107,7 +110,7 @@ const selectNextLectureFromDate = (data, { time, numberOfLecture }) => {
             Helpers.createTimestamp(lecture.date, lecture.startTime),
             time || new Date()
           ),
-          lectureToday: index + 1
+          activityIndexToday: index + 1
         };
       })
       .filter(lecture => {

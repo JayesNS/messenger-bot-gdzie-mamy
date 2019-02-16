@@ -2,7 +2,7 @@
 
 const fs = require('fs'),
   path = require('path'),
-  User = require('./user');
+  { User } = require('./User');
 
 const usersDataPath = path.join(__dirname, '../data/users.json');
 class UserRepo {
@@ -11,10 +11,10 @@ class UserRepo {
     this.load()
       .then(users => {
         users = Object.keys(users)
-          .map(senderPsid => users[senderPsid])
-          .map(user => new User(user.senderPsid, user.groups, user.botMessagingHistory));
+          .map(senderId => users[senderId])
+          .map(user => new User(user.id, user.groups, user.botMessagingHistory));
 
-        users.forEach(user => (this.users[user.senderPsid] = user));
+        users.forEach(user => (this.users[user.id] = user));
       })
       .catch(error => {
         this.save(this.users);
@@ -27,11 +27,15 @@ class UserRepo {
   }
 
   getUser(senderPsid) {
-    return this.users[senderPsid];
+    if (this.hasUser(senderPsid)) {
+      return this.users[senderPsid];
+    } else {
+      return this.addUser(new User(senderPsid));
+    }
   }
 
   updateUser(user) {
-    this.users[user.senderPsid] = user;
+    this.users[user.id] = user;
     this.save(this.users)
       .then(data => {})
       .catch(error => {});
@@ -70,4 +74,4 @@ class UserRepo {
   }
 }
 
-module.exports = UserRepo;
+module.exports = { UserRepo };

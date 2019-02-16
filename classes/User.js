@@ -1,8 +1,8 @@
 'user strict';
 
 class User {
-  constructor(senderPsid, groups, botMessagingHistory) {
-    this.senderPsid = senderPsid;
+  constructor(senderId, groups, botMessagingHistory) {
+    this.id = senderId;
     this.groups = groups || [];
     this.botMessagingHistory = botMessagingHistory || [];
   }
@@ -15,9 +15,13 @@ class User {
     this.botMessagingHistory.unshift(responseName);
   }
 
+  hasGroups() {
+    return this.groups.length > 0;
+  }
+
   getLastMessagingHistoryRecord() {
     return this.botMessagingHistory[0];
   }
 }
 
-module.exports = User;
+module.exports = { User };

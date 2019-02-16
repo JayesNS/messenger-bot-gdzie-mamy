@@ -3,15 +3,16 @@
 const request = require('request');
 const { Helpers } = require('./Helpers');
 
-class ApiHandler {
-  constructor(apiUrl, currentTime) {
-    this.apiUrl = apiUrl;
-    this.currentTime = currentTime;
+class ScheduleApi {
+  constructor() {
+    this.apiUrl = 'https://gdziemamy.jsthats.me/api';
   }
 
   findGroup(groupName) {
     return new Promise((resolve, reject) => {
-      request(`${this.apiUrl}/groups/${encodeURIComponent(groupName)}/5`, (err, res, data) => {
+      const url = `${this.apiUrl}/groups/${groupName}/5`;
+      request(encodeURI(url), (err, res, data) => {
+        console.log({ groupName, url: encodeURI(url), res });
         if (!err) {
           resolve(JSON.parse(data));
         } else {
@@ -21,14 +22,14 @@ class ApiHandler {
     });
   }
 
-  findTodaysLecture(groupId, offset) {
+  findActivity(groupId, offset = 'nearest', datetime = new Date()) {
     if (offset !== 'nearest' && offset !== 'later') {
       return Promise.reject();
     }
 
     return new Promise((resolve, reject) => {
-      const url = `${this.apiUrl}/group/${groupId}/lecture/${offset}/${this.currentTime || ''}`;
-      request(url, (err, res, data) => {
+      const url = `${this.apiUrl}/group/${groupId}/lecture/${offset}/${datetime}`;
+      request(encodeURI(url), (err, res, data) => {
         if (err) {
           reject(err);
         }
@@ -39,4 +40,4 @@ class ApiHandler {
   }
 }
 
-module.exports = { ApiHandler };
+module.exports = { ScheduleApi };
