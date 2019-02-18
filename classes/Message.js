@@ -35,7 +35,12 @@ class Message {
   }
 
   hasNlpEntities(type) {
-    return this.message.nlp && this.message.nlp.entities && this.message.nlp.entities[type];
+    return (
+      this.message &&
+      this.message.nlp &&
+      this.message.nlp.entities &&
+      this.message.nlp.entities[type]
+    );
   }
 
   getFirstNlpEnitityOfType(type) {
@@ -43,6 +48,12 @@ class Message {
       return this.message.nlp.entities[type][0].value;
     } else {
       return null;
+    }
+  }
+
+  static assureType(object) {
+    if (!(object instanceof Message)) {
+      throw `Object must be an instance of 'Message' class`;
     }
   }
 }

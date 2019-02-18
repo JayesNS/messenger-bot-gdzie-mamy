@@ -40,10 +40,7 @@ class Messaging {
   }
 
   static handleUnpredictedMessage(message) {
-    if (!(message instanceof Message)) {
-      console.error(`'message' must be an instance of 'Message'`);
-      return;
-    }
+    Message.assureType(message);
 
     const sender = message.sender;
 
@@ -59,6 +56,8 @@ function findMessageResponseNameByTrigger(trigger) {
   if (typeof trigger !== 'string') {
     return;
   }
+  trigger = trigger.toLowerCase();
+
   return Object.keys(Messages).find(name => {
     if (!Messages[name].trigger) return false;
 
@@ -68,7 +67,7 @@ function findMessageResponseNameByTrigger(trigger) {
 
     return Messages[name].trigger
       .map(value => (typeof value === 'string' ? value.toLowerCase() : null))
-      .includes(trigger.toLowerCase());
+      .includes(trigger);
   });
 }
 
@@ -87,9 +86,10 @@ const Messages = {
   NOT_CONFIGURED: {
     trigger: [MessageName.NOT_CONFIGURED],
     content: () =>
-      Template.quickRepliesMessage('Nie należysz do żadnej grupy.', [
-        Template.createQuickReply('Skonfiguruj')
-      ])
+      Template.quickRepliesMessage(
+        'Nie należysz jeszcze do żadnej grupy. Kliknij w poniższy przycisk, aby to zrobić. ;)',
+        [Template.createQuickReply('Dodaj grupę', 'skonfiguruj')]
+      )
   },
   FIND_ACTIVITY: {
     trigger: [MessageName.FIND_ACTIVITY],
@@ -138,7 +138,7 @@ const Messages = {
   },
   NO_LECTURES_TODAY: {
     trigger: [MessageName.NO_LECTURES_TODAY],
-    content: () => Template.textMessage('Nie masz dziś żadnych zajęć')
+    content: () => Template.textMessage('Podanego dnia nie masz żadnych zajęć. :D')
   },
   SHOW_LATER_LECTURE: {
     trigger: text => new RegExp('(następni?e)|(później)|(potem)').test(text),
@@ -146,7 +146,7 @@ const Messages = {
       SendApi.sendMessageFromTemplate(Messages['FIND_ACTIVITY'], { message, offset: 'later' })
   },
   TRY_SHOW_SCHEDULE: {
-    trigger: text => new RegExp('((gdzie|co) ?mamy)|(teraz)').test(text),
+    trigger: text => new RegExp('((gdzie|co) ?mamy)|(gdziemamy)|(teraz)', '').test(text),
     content: ({ message }) => {
       const sender = message.sender;
       if (sender.hasGroups()) {
@@ -158,12 +158,13 @@ const Messages = {
   },
   GROUP_FOUND: {
     trigger: [MessageName.GROUP_FOUND],
-    content: ({ message }) => {
+    content: ({ message, group }) => {
       const sender = message.sender;
+      console.log({ sender });
       userRepo.updateUser(sender);
       SendApi.sendMessage(
-        Template.quickRepliesMessage('Dodano pomyślnie grupę', [
-          Template.createQuickReply('Gdzie mamy?', 'Gdzie mamy?')
+        Template.quickRepliesMessage(`Dodano pomyślnie grupę (${group.name})`, [
+          Template.createQuickReply('Gdzie mamy?')
         ]),
         { message }
       );
@@ -173,7 +174,7 @@ const Messages = {
     trigger: [MessageName.PLEASE_SPECIFY_GROUP],
     content: ({ groups }) =>
       Template.quickRepliesMessage(
-        'Znaleziono kilka pasujących grup. Czy należysz do którejś z nich?',
+        'Należysz do którejś z tych grup? Jeśli nie to wpisz poprawną nazwę lub sprawdź ją w planie.',
         groups.map(group => Template.createQuickReply(group.name, group.name))
       )
   },
@@ -183,18 +184,15 @@ const Messages = {
       const sender = message.sender;
       const groupName = message.text;
 
-      console.log({ groupName });
-
       scheduleApi
         .findGroup(groupName)
         .then(groups => {
-          console.log({ groups });
           if (groups.length === 0) {
             sender.addMessagingHistoryRecord(MessageName['CONFIGURE']);
             SendApi.sendMessageFromTemplate(Messages['NO_MATCHING_GROUPS'], { message });
           } else if (groups.length === 1) {
             sender.addGroup(groups[0]);
-            SendApi.sendMessageFromTemplate(Messages['GROUP_FOUND'], { message });
+            SendApi.sendMessageFromTemplate(Messages['GROUP_FOUND'], { message, group: groups[0] });
           } else {
             sender.addMessagingHistoryRecord(MessageName['CONFIGURE']);
             SendApi.sendMessageFromTemplate(Messages['PLEASE_SPECIFY_GROUP'], { message, groups });
@@ -208,21 +206,23 @@ const Messages = {
   NO_MATCHING_GROUPS: {
     trigger: [MessageName.NO_MATCHING_GROUPS],
     content: () =>
-      Template.buttonMessage('Nie znaleziono pasującej grupy, wpisz poprawną nazwę grupy.', [
-        Button.openSchedule()
-      ])
+      Template.buttonMessage(
+        'Nie znaleziono podanej przez ciebie grupy. Spróbuj wpisać ją jeszcze raz albo ją doprecyzuj.',
+        [Button.openSchedule()]
+      )
   },
   CONFIGURE: {
-    trigger: [MessageName.CONFIGURE, 'skonfiguruj'],
+    trigger: [MessageName.CONFIGURE, 'skonfiguruj', 'konfiguruj'],
     content: () =>
-      Template.buttonMessage('Wpisz teraz swoją grupę (najlepiej skopiuj ją z planu zajęć)', [
-        Button.openSchedule()
-      ])
+      Template.buttonMessage(
+        'Teraz wpisz swoją grupę. Najlepiej jeśli wkleisz ją tutaj z planu zajęć ;)',
+        [Button.openSchedule()]
+      )
   },
   HOW_CAN_I_HELP_YOU: {
     trigger: [MessageName.HOW_CAN_I_HELP_YOU],
     content: () =>
-      Template.quickRepliesMessage('W czym mogę pomóc?', [
+      Template.quickRepliesMessage('Tu Gdzie Mamy. Jak mogę pomóc?', [
         Template.createQuickReply('Gdzie mamy?'),
         Template.createQuickReply('Skonfiguruj')
       ])

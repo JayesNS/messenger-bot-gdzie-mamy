@@ -1,7 +1,9 @@
 `use strict`;
 
 const request = require('request');
+
 const { PAGE_ACCESS_TOKEN } = require('./../page-access-token');
+const { Message } = require('./Message');
 
 class SendApi {
   static sendSenderAction(senderId, type) {
@@ -15,15 +17,21 @@ class SendApi {
     return makeRequest(responseBody);
   }
 
-  static sendMessageFromTemplate(response, payload) {
-    // TODO: payload must be an instance of Message
-    // TODO: response must be an instance of Response class
-    this.sendMessage(response.content(payload), payload);
+  static sendMessageFromTemplate(responseTemplate, payload) {
+    Message.assureType(payload.message);
+    if (
+      Object.getOwnPropertyNames(responseTemplate).every(
+        property => property !== 'trigger' && property !== 'content'
+      )
+    ) {
+      throw `'responseTemplate' contains invalid properties. Make sure it contains only 'trigger' and 'content' properties`;
+    }
+
+    this.sendMessage(responseTemplate.content(payload), payload);
   }
 
   static sendMessage(content, payload) {
-    // TODO: payload must be an instance of Message
-    // TODO: content must be a string
+    Message.assureType(payload.message);
 
     const responseBody = {
       recipient: {

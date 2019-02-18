@@ -23,12 +23,9 @@ router.get('/groups/:groupName/:groupsLimit?', (req, res) => {
   const groupsLimit = req.params.groupsLimit || GROUPS_LIMIT;
   const groupName = decodeURIComponent(req.params.groupName);
 
-  console.log({ groupName });
-
   fetchGroupList(selectMatchingGroups, groupName)
     .then(groups => {
       const limitedGroups = groups.length > groupsLimit ? [] : groups;
-      console.log({ groups, limitedGroups });
 
       sendJSON(res, limitedGroups);
     })

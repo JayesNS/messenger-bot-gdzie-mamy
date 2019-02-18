@@ -12,7 +12,6 @@ class ScheduleApi {
     return new Promise((resolve, reject) => {
       const url = `${this.apiUrl}/groups/${groupName}/5`;
       request(encodeURI(url), (err, res, data) => {
-        console.log({ groupName, url: encodeURI(url), res });
         if (!err) {
           resolve(JSON.parse(data));
         } else {
