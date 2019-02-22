@@ -33,11 +33,11 @@ router.get('/groups/:groupName/:groupsLimit?', (req, res) => {
       handleRequestError(res, error || statusCode);
     });
 });
-router.get('/group/:groupId/lectures/:limit?', (req, res) => {
+router.get('/group/:groupId/schedule/:datetime?', (req, res) => {
   const groupId = req.params.groupId;
-  const limit = req.params.limit;
+  const datetime = new Date(Date.parse(req.params.datetime) || Date.now());
 
-  fetchSchedule(groupId, selectLectures, { limit })
+  fetchSchedule(groupId, selectLecturesFromDate, { datetime })
     .then(lectures => {
       sendJSON(res, lectures);
     })
@@ -45,13 +45,13 @@ router.get('/group/:groupId/lectures/:limit?', (req, res) => {
       handleRequestError(res, error || statusCode);
     });
 });
-router.get('/group/:groupId/lecture/:offset(nearest|later)/:time?', (req, res) => {
+router.get('/group/:groupId/lecture/:offset(nearest|later)/:datetime?', (req, res) => {
   const groupId = req.params.groupId;
   const offset = req.params.offset;
-  const time = new Date(Date.parse(req.params.time) || Date.now());
+  const datetime = new Date(Date.parse(req.params.datetime) || Date.now());
 
-  fetchSchedule(createUrlToSchedule(groupId), selectNextLectureFromDate, {
-    time,
+  fetchSchedule(groupId, selectNextLectureFromDate, {
+    datetime,
     numberOfLecture: offset === 'later' ? 1 : 0
   })
     .then(lecture => {
@@ -92,34 +92,34 @@ const selectLectures = data => {
     .filter(filterNotEmpty)
     .map(parseActivity);
 };
-const selectLecturesFromDate = (data, { time }) =>
+const selectLecturesFromDate = (data, { datetime }) =>
   selectLectures(data).filter(lecture => {
-    return Helpers.compareOnlyDates(time, lecture.date);
+    return Helpers.compareOnlyDates(datetime, lecture.date);
   });
-const selectNextLectureFromDate = (data, { time, numberOfLecture }) => {
+const selectNextLectureFromDate = (data, { datetime, numberOfLecture }) => {
   return (
-    selectLecturesFromDate(data, { time })
+    selectLecturesFromDate(data, { datetime })
       .map((lecture, index) => {
         return {
           ...lecture,
-          queryDateTime: time,
+          queryDateTime: datetime,
           minutesToStart: Helpers.timeDifferenceInMinutes(
             Helpers.createTimestamp(lecture.date, lecture.startTime),
-            time || new Date()
+            datetime || new Date()
           ),
           activityIndexToday: index + 1
         };
       })
       .filter(lecture => {
-        const LECTURE_LENGTH_IN_MINUTES = 90;
-        return lecture.minutesToStart > -LECTURE_LENGTH_IN_MINUTES;
+        const ALLOWED_LATENESS = 70;
+        return lecture.minutesToStart > -ALLOWED_LATENESS;
       })[numberOfLecture] || {}
   );
 };
 
 // URLs
 const createUrlToGroupList = () => `${apiUrl}?typ=G&xml`;
-const createUrlToSchedule = groupId => `${apiUrl}?typ=G&id=${groupId}&okres=1&xml`;
+const createUrlToSchedule = groupId => `${apiUrl}?typ=G&id=${groupId}&okres=3&xml`;
 
 // Filters
 const filterNotEmpty = value => (value ? true : false);

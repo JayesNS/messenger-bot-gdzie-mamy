@@ -20,6 +20,10 @@ class Helpers {
     );
   }
 
+  static getOnlyDate(datetime) {
+    return new Date(datetime.getFullYear(), datetime.getMonth(), datetime.getDate());
+  }
+
   static createTimestamp(date, time) {
     return new Date(`${date}T${time}`);
   }

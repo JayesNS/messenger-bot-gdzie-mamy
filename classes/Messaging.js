@@ -25,6 +25,7 @@ class Messaging {
   static handleMessage(senderId, receivedMessage) {
     const sender = userRepo.getUser(senderId);
     const message = new Message(sender, receivedMessage);
+    console.log({ message: JSON.stringify(message, null, 1) });
 
     const messageResponseName = findMessageResponseNameByTrigger(message.text);
     if (!messageResponseName) {
@@ -87,9 +88,62 @@ const Messages = {
     trigger: [MessageName.NOT_CONFIGURED],
     content: () =>
       Template.quickRepliesMessage(
-        'Nie należysz jeszcze do żadnej grupy. Kliknij w poniższy przycisk, aby to zrobić. ;)',
+        'Nie należysz jeszcze do żadnej grupy. Kliknij w poniższy przycisk, aby to dodać. ;)',
         [Template.createQuickReply('Dodaj grupę', 'skonfiguruj')]
       )
+  },
+  FIND_SCHEDULE: {
+    trigger: text => new RegExp('plan', 'i').test(text),
+    content: ({ message, datetime }) => {
+      const groupId = message.sender.groups[0].id;
+
+      datetime = new Date(datetime);
+      if (message.hasNlpEntities('datetime')) {
+        datetime = new Date(message.getFirstNlpEnitityOfType('datetime'));
+      }
+
+      const activityDate = Helpers.getOnlyDate(new Date(datetime));
+      const currentDate = Helpers.getOnlyDate(new Date());
+
+      const isActivityFromThePast = activityDate - currentDate < 0 ? true : false;
+
+      scheduleApi.getSchedule(groupId, datetime).then(schedule => {
+        if (isActivityFromThePast) {
+          SendApi.sendMessage(Template.textMessage('Ten dzień już minął, ale przypomnę ci plan.'), {
+            message
+          });
+        } else if (schedule.length > 4) {
+          SendApi.sendMessage(
+            Template.textMessage(`Ten dzień wygląda na ciężki... Powodzenia! :'(`),
+            {
+              message
+            }
+          );
+        } else {
+          SendApi.sendMessage(
+            Template.textMessage('Tak wygląda plan twojej grupy na ten dzień. ;)'),
+            {
+              message
+            }
+          );
+        }
+
+        if (schedule) {
+          const sortedScheduleString = schedule
+            .sort((a, b) => a.startTime > b.startTime)
+            .map(
+              activity =>
+                `${activity.startTime} - ${activity.endTime} ${activity.name} w ${activity.room}`
+            );
+          const timeout = setTimeout(() => {
+            SendApi.sendMessage(Template.textMessage(sortedScheduleString.join('\n')), { message });
+            clearTimeout(timeout);
+          }, 500);
+        } else {
+          SendApi.sendMessageFromTemplate(Messages['NO_LECTURES_TODAY'], { message });
+        }
+      });
+    }
   },
   FIND_ACTIVITY: {
     trigger: [MessageName.FIND_ACTIVITY],
@@ -102,33 +156,53 @@ const Messages = {
       }
 
       scheduleApi
-        .findActivity(senderGroupId, offset, datetime)
+        .getActivity(senderGroupId, offset, datetime)
         .then(activity => {
           if (!activity) {
             SendApi.sendMessageFromTemplate(Messages['NO_LECTURES_TODAY'], { message });
             return;
           }
 
-          const isActivityToday = Helpers.compareOnlyDates(activity.date, activity.queryDateTime);
-          const isFirstActivityAhead =
-            activity &&
-            isActivityToday &&
-            activity.activityIndexToday !== 1 &&
-            activity.minutesToStart > 0;
+          const activityDatetime = new Date(activity.date);
 
-          if (isFirstActivityAhead) {
+          const isActivityToday = Helpers.compareOnlyDates(activityDatetime, new Date());
+          const isSenderLate = activity.minutesToStart < 0 && activity.minutesToStart > -45;
+          const isTooLate = activity.minutesToStart < -45;
+          const isActivityInOneHour = activity.minutesToStart < 60 && !isSenderLate;
+          const lateness = Math.round(Math.abs(activity.minutesToStart));
+
+          if (isSenderLate) {
             SendApi.sendMessage(
               Template.textMessage(
-                `Masz jeszcze ${
-                  activity.minutesToStart
-                } minut do następnych zajęć. ${prepareActivityMessage(activity)}`
+                `Jesteś spóźniony ${lateness} minut. ${
+                  lateness > 15 ? '😱' : '😨'
+                } ${prepareActivityMessage(activity)}`
               ),
               { message }
             );
-          } else {
+          } else if (isTooLate) {
+            SendApi.sendMessage(
+              Template.quickRepliesMessage(
+                `Jesteś spóźniony więcej niż 45 minut. Możesz sprawdzić co masz później. ;)`,
+                [Template.createQuickReply('Co potem?')]
+              ),
+              { message }
+            );
+          } else if (isActivityInOneHour) {
+            SendApi.sendMessage(
+              Template.textMessage(
+                `Masz jeszcze ${Math.round(activity.minutesToStart)} minut do następnych zajęć. ${
+                  activity.minutesToStart > 30 ? '☕' : ''
+                } ${prepareActivityMessage(activity)}`
+              ),
+              { message }
+            );
+          } else if (isActivityToday) {
             SendApi.sendMessage(Template.textMessage(prepareActivityMessage(activity)), {
               message
             });
+          } else {
+            SendApi.sendMessageFromTemplate(Messages['FIND_SCHEDULE'], { message, datetime });
           }
         })
         .catch(error => {
@@ -138,15 +212,15 @@ const Messages = {
   },
   NO_LECTURES_TODAY: {
     trigger: [MessageName.NO_LECTURES_TODAY],
-    content: () => Template.textMessage('Podanego dnia nie masz żadnych zajęć. :D')
+    content: () => Template.textMessage('Tego dnia nie masz żadnych zajęć. :D')
   },
-  SHOW_LATER_LECTURE: {
-    trigger: text => new RegExp('(następni?e)|(później)|(potem)').test(text),
+  FIND_LATER_LECTURE: {
+    trigger: text => new RegExp('(następni?e)|(później)|(potem)|(zaraz)').test(text),
     content: ({ message }) =>
       SendApi.sendMessageFromTemplate(Messages['FIND_ACTIVITY'], { message, offset: 'later' })
   },
   TRY_SHOW_SCHEDULE: {
-    trigger: text => new RegExp('((gdzie|co) ?mamy)|(gdziemamy)|(teraz)', '').test(text),
+    trigger: text => new RegExp('((gdzie|co) ?mamy)|(gdziemamy)', '').test(text),
     content: ({ message }) => {
       const sender = message.sender;
       if (sender.hasGroups()) {
@@ -160,7 +234,6 @@ const Messages = {
     trigger: [MessageName.GROUP_FOUND],
     content: ({ message, group }) => {
       const sender = message.sender;
-      console.log({ sender });
       userRepo.updateUser(sender);
       SendApi.sendMessage(
         Template.quickRepliesMessage(`Dodano pomyślnie grupę (${group.name})`, [
@@ -185,7 +258,7 @@ const Messages = {
       const groupName = message.text;
 
       scheduleApi
-        .findGroup(groupName)
+        .getGroup(groupName)
         .then(groups => {
           if (groups.length === 0) {
             sender.addMessagingHistoryRecord(MessageName['CONFIGURE']);

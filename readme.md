@@ -1,3 +1,16 @@
+# Obsługiwane wiadomości
+
+| Efekt                                    |                         Musi zawierać                          | Przykład                                                       | Uwagi                                                 |
+| ---------------------------------------- | :------------------------------------------------------------: | -------------------------------------------------------------- | ----------------------------------------------------- |
+| Uruchomienie procesu konfiguracji        |                **konfiguruj**, **skonfiguruj**                 | *Skonfiguruj*                                                  | konfiguracja trwa aż użytkownik poda poprawną grupę   |
+| Wyświetlanie aktualnych zajęć            |                  **co mamy**, **gdzie mamy**                   | *Gdzie mamy?*                                                  |
+| Wyświetlanie czasu do najbliższych zajęć |                  **co mamy**, **gdzie mamy**                   | *Gdzie mamy?*                                                  | czas do zajęć < 1 godzina                             |
+| Wyświetlanie późniejszych zajęć          | **następne**, **następnie**, **później**, **potem**, **zaraz** | *Co mamy potem?*                                               |
+| Wyświetlanie planu                       |                            **plan**                            | *Mogę zobaczyć plan?*, *Pokaż plan*                            |
+| Wyświetlanie planu na inny dzień         |              **co mamy (data)**, **plan (data)**               | *Co mamy 23 marca?*, *Co mamy jutro?*, *Pokaż plan 4 kwietnia* | najlepiej podawać nazwę miesiąca słownie np. 23 marca |
+
+
+
 # Wysyłanie wiadomości do bota
 
 Wyślij zapytanie POST na adres `https://gdziemamy.jsthats.me/webhook`, o typie zawartości `application/json`, parametrem jest tekst w formacie `JSON` z danymi potrzebnymi do wysłania zawartości.
