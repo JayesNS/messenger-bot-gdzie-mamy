@@ -10,8 +10,8 @@ class ScheduleApi {
 
   getGroup(groupName) {
     return new Promise((resolve, reject) => {
-      const url = `${this.apiUrl}/groups/${groupName}/5`;
-      request(encodeURI(url), (err, res, data) => {
+      const url = `${this.apiUrl}/groups/${encodeURIComponent(groupName)}/5`;
+      request(url, (err, res, data) => {
         if (!err) {
           resolve(JSON.parse(data));
         } else {

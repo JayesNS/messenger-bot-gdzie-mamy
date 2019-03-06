@@ -25,7 +25,7 @@ class Messaging {
   static handleMessage(senderId, receivedMessage) {
     const sender = userRepo.getUser(senderId);
     const message = new Message(sender, receivedMessage);
-    console.log({ message: JSON.stringify(message, null, 1) });
+    console.log('\n', JSON.stringify(message, null, 1));
 
     const messageResponseName = findMessageResponseNameByTrigger(message.text);
     if (!messageResponseName) {
@@ -89,13 +89,13 @@ const Messages = {
     content: () =>
       Template.quickRepliesMessage(
         'Nie należysz jeszcze do żadnej grupy. Kliknij w poniższy przycisk, aby to dodać. ;)',
-        [Template.createQuickReply('Dodaj grupę', 'skonfiguruj')]
+        [Template.createQuickReply('Skonfiguruj')]
       )
   },
   FIND_SCHEDULE: {
-    trigger: text => new RegExp('plan', 'i').test(text),
+    trigger: text => new RegExp(' plan', 'i').test(text),
     content: ({ message, datetime }) => {
-      const groupId = message.sender.groups[0].id;
+      let groupId = message.sender.groups[0].id;
 
       datetime = new Date(datetime);
       if (message.hasNlpEntities('datetime')) {
@@ -145,10 +145,17 @@ const Messages = {
       });
     }
   },
+  FIND_ROOM: {
+    trigger: text => new RegExp('30 koło kortów', 'i').test(text),
+    content: () =>
+      Template.imageMessage(
+        'https://www.facebook.com/gdzie.mamy/photos/a.2190666517928265/2190666531261597/?type=3&theater'
+      )
+  },
   FIND_ACTIVITY: {
     trigger: [MessageName.FIND_ACTIVITY],
     content: ({ message, offset }) => {
-      const senderGroupId = message.sender.groups[0].id;
+      let groupId = message.sender.groups[0].id;
 
       let datetime = new Date();
       if (message.hasNlpEntities('datetime')) {
@@ -156,7 +163,7 @@ const Messages = {
       }
 
       scheduleApi
-        .getActivity(senderGroupId, offset, datetime)
+        .getActivity(groupId, offset, datetime)
         .then(activity => {
           if (!activity) {
             SendApi.sendMessageFromTemplate(Messages['NO_LECTURES_TODAY'], { message });
@@ -198,9 +205,18 @@ const Messages = {
               { message }
             );
           } else if (isActivityToday) {
-            SendApi.sendMessage(Template.textMessage(prepareActivityMessage(activity)), {
-              message
-            });
+            SendApi.sendMessage(
+              activity.room === '30 koło kortów'
+                ? Template.quickRepliesMessage(prepareActivityMessage(activity), [
+                    activity.room === '30 koło kortów'
+                      ? Template.createQuickReply('30 koło kortów')
+                      : null
+                  ])
+                : Template.textMessage(prepareActivityMessage(activity)),
+              {
+                message
+              }
+            );
           } else {
             SendApi.sendMessageFromTemplate(Messages['FIND_SCHEDULE'], { message, datetime });
           }
@@ -280,7 +296,7 @@ const Messages = {
     trigger: [MessageName.NO_MATCHING_GROUPS],
     content: () =>
       Template.buttonMessage(
-        'Nie znaleziono podanej przez ciebie grupy. Spróbuj wpisać ją jeszcze raz albo ją doprecyzuj.',
+        'Nie znaleziono podanej przez ciebie grupy. Spróbuj wpisać ją jeszcze raz albo wklej jej nazwę z planu.',
         [Button.openSchedule()]
       )
   },
@@ -288,7 +304,7 @@ const Messages = {
     trigger: [MessageName.CONFIGURE, 'skonfiguruj', 'konfiguruj'],
     content: () =>
       Template.buttonMessage(
-        'Teraz wpisz swoją grupę. Najlepiej jeśli wkleisz ją tutaj z planu zajęć ;)',
+        'Teraz wpisz nazwę swojej grupy. Najlepiej jeśli wkleisz ją tutaj z planu zajęć ;)',
         [Button.openSchedule()]
       )
   },
