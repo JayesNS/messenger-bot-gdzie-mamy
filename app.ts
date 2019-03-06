@@ -10,5 +10,5 @@ app.get('/', (req, res) => {
   res.send(process.env.PORT);
 });
 
-app.use('/webhook', require('./webhook'));
-app.use('/api', require('./api'));
+app.use('/webhook', require('./src/routes/webhook'));
+app.use('/api', require('./src/routes/api'));
