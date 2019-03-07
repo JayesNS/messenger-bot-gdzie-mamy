@@ -3,3 +3,4 @@ node_modules
 page-access-token.js
 data/users.json
 dist
+Dockerfile

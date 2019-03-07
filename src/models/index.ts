@@ -1,2 +1,2 @@
 export * from './Group';
-export * from './Schedule';
+export * from './Activity';

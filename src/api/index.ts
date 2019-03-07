@@ -1,2 +1,2 @@
 export * from './Api';
-export * from './UekApi';
+export * from './uek/UekApi';

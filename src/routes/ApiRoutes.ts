@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Api } from '../api';
-import { Group } from '../models';
+import { Group, Activity } from '../models';
+import { json } from 'body-parser';
 
 export class ApiRoutes {
   public router: Router;
@@ -17,40 +18,32 @@ export class ApiRoutes {
     this.router.get('/', (req, res) => {
       res.send('API');
     });
+    this.router.get('/groups/:groupId/schedule/:datetime?', (req, res) =>
+      this.getScheduleFromDateByGroupIdRoute(req, res)
+    );
     this.router.get('/groups', (req, res) => this.getAllGroupsRoute(req, res));
     this.router.get('/groups/:groupName/:groupsLimit?', (req, res) =>
       this.getGroupByNameRoute(req, res)
     );
-    this.router.get('/group/:groupId/schedule/:datetime?', (req, res) =>
-      this.getScheduleByGroupIdRoute(req, res)
-    );
   }
 
-  private getAllGroupsRoute(req, res): void {
-    this.api
-      .getAllGroups()
-      .then((groups: Group[]) => {
-        res.send(groups);
-      })
-      .catch(error => {
-        console.error({ error });
-      });
+  private async getAllGroupsRoute(req, res): Promise<void> {
+    const groups: Group[] = await this.api.getAllGroups();
+    res.send(groups);
   }
 
-  private getGroupByNameRoute(req, res): void {
-    const groupName = decodeURIComponent(req.params.groupName);
-    this.api
-      .getGroupsByName(groupName)
-      .then((groups: Group[]) => {
-        res.send(groups);
-      })
-      .catch(error => {
-        console.error({ error });
-      });
+  private async getGroupByNameRoute(req, res): Promise<void> {
+    const groupName: string = decodeURIComponent(req.params.groupName);
+    const groups: Group[] = await this.api.getGroupsByName(groupName);
+    res.send(groups);
   }
 
-  private getScheduleByGroupIdRoute(req, res): void {
-    res.send('Get groups schedule');
+  private async getScheduleFromDateByGroupIdRoute(req, res): Promise<void> {
+    const groupId: number = req.params.groupId;
+    const dateParam = req.params.datetime;
+    const datetime: Date = dateParam ? new Date(dateParam) : undefined;
+    const fullSchedule: Activity[] = await this.api.getScheduleFromDateByGroupId(groupId, datetime);
+    res.send(fullSchedule);
   }
 }
 

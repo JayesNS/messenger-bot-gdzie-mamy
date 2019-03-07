@@ -1,7 +1,7 @@
-import { Group, Schedule } from '../models';
+import { Group, Activity } from '../models';
 
 export interface Api {
   getAllGroups(): Promise<Group[]>;
-  getScheduleByGroupId(groupId: number): Promise<Schedule>;
+  getScheduleFromDateByGroupId(groupId: number, datetime?: Date): Promise<Activity[]>;
   getGroupsByName(groupName: string, limitAmount?: number): Promise<Group[]>;
 }
