@@ -1,12 +1,14 @@
 import * as express from 'express';
-import { ApiRoutes } from './routes';
+import * as bodyParser from 'body-parser';
+
+import { ApiRoutes, WebhookRoutes } from './routes';
 import { UekApi } from './api';
 
 class App {
   public express: express.Express;
 
   constructor() {
-    this.express = express();
+    this.express = express().use(bodyParser.json());
     this.mountRoutes();
   }
 
@@ -16,6 +18,7 @@ class App {
       res.send('Hello World');
     });
     router.use('/api', new ApiRoutes(new UekApi()).router);
+    router.use('/webhook', new WebhookRoutes().router);
 
     this.express.use(router);
   }

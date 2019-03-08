@@ -1,7 +1,6 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { Api, TimeOffset } from '../api';
 import { Group, Activity } from '../models';
-import { Request, Response } from 'express-serve-static-core';
 
 export class ApiRoutes {
   public router: Router;
@@ -15,7 +14,7 @@ export class ApiRoutes {
   }
 
   setupRoutes() {
-    this.router.get('/', (req, res) => {
+    this.router.get('/', (req: Request, res: Response) => {
       res.send('API');
     });
     this.router.get(
