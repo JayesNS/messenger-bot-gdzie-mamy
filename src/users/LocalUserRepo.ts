@@ -7,10 +7,15 @@ import { User } from '../models';
 const LOCAL_DATA_PATH = './data/users.json';
 
 export class LocalUserRepo implements UserRepo {
+  private static _instance: LocalUserRepo;
   private users: TSMap<number, User> = new TSMap();
 
-  constructor(private localDataPath: string = LOCAL_DATA_PATH) {
+  private constructor(private localDataPath: string = LOCAL_DATA_PATH) {
     this.load();
+  }
+
+  static get Instance() {
+    return this._instance || (this._instance = new this());
   }
 
   hasUser(userId: number): boolean {

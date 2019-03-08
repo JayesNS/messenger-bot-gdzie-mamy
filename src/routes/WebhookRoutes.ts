@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 
-import { User } from '../models';
+import { User, Recipient } from '../models';
 import { UserRepo, LocalUserRepo } from '../users';
 import { SendApi, MessageHandler } from '../messaging';
 import { MarkSeenMessage, TypingOnMessage } from '../messaging/messages';
@@ -15,7 +15,7 @@ export class WebhookRoutes {
   constructor() {
     this.router = Router();
     this.sendApi = new SendApi();
-    this.userRepo = new LocalUserRepo();
+    this.userRepo = LocalUserRepo.Instance;
     this.messageHandler = new MessageHandler();
 
     this.setupRoutes();
@@ -34,15 +34,18 @@ export class WebhookRoutes {
         const senderId: number = webhookEvent.sender.id;
 
         const sender: User = await this.userRepo.getUserById(senderId);
-        const result = Promise.all([
-          this.sendApi.sendMessage(new TypingOnMessage(sender.id)),
-          this.sendApi.sendMessage(new MarkSeenMessage(sender.id))
+        const recipient: Recipient = { id: sender.id };
+        Promise.all([
+          this.sendApi.sendMessage(recipient, new TypingOnMessage()),
+          this.sendApi.sendMessage(recipient, new MarkSeenMessage())
         ]);
 
         if (webhookEvent.message) {
           this.messageHandler.handleMessageEvent(sender, webhookEvent.message);
         } else if (webhookEvent.postback) {
           this.messageHandler.handlePostbackEvent(sender, webhookEvent.postback);
+        } else if (webhookEvent.attachments) {
+          this.messageHandler.handleAttachmentEvent(sender, webhookEvent.attachments);
         }
       });
 
