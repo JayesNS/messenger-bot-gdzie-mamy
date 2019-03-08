@@ -2,22 +2,27 @@ import { Router, Request, Response } from 'express';
 
 import { User } from '../models';
 import { UserRepo, LocalUserRepo } from '../users';
+import { SendApi, MessageHandler } from '../messaging';
+import { MarkSeenMessage, TypingOnMessage } from '../messaging/messages';
+import { VERIFY_TOKEN } from '../../config';
 
 export class WebhookRoutes {
   public router: Router;
-  private sendApi;
-  private messageHandler;
+  private sendApi: SendApi;
+  private messageHandler: MessageHandler;
   private userRepo: UserRepo;
 
   constructor() {
     this.router = Router();
+    this.sendApi = new SendApi();
     this.userRepo = new LocalUserRepo();
+    this.messageHandler = new MessageHandler();
 
     this.setupRoutes();
   }
 
   setupRoutes(): void {
-    this.router.post('/', async (req: Request, res: Response) => {
+    this.router.post('/', (req: Request, res: Response) => {
       let body = req.body;
 
       if (body.object !== 'page') {
@@ -29,21 +34,22 @@ export class WebhookRoutes {
         const senderId: number = webhookEvent.sender.id;
 
         const sender: User = await this.userRepo.getUserById(senderId);
+        const result = Promise.all([
+          this.sendApi.sendMessage(new TypingOnMessage(sender.id)),
+          this.sendApi.sendMessage(new MarkSeenMessage(sender.id))
+        ]);
 
-        /* SendApi.sendSenderAction(senderId, 'typing_on');
         if (webhookEvent.message) {
-          Messaging.handleMessage(senderId, webhookEvent.message);
+          this.messageHandler.handleMessageEvent(sender, webhookEvent.message);
         } else if (webhookEvent.postback) {
-          Messaging.handleMessage(senderId, webhookEvent.postback);
-        } */
+          this.messageHandler.handlePostbackEvent(sender, webhookEvent.postback);
+        }
       });
 
       res.status(200).send('EVENT_RECEIVED');
     });
 
-    this.router.get('/', (req, res) => {
-      let VERIFY_TOKEN = 'albert:gdzie-mamy';
-
+    this.router.get('/', (req: Request, res: Response) => {
       let mode = req.query['hub.mode'],
         token = req.query['hub.verify_token'],
         challenge = req.query['hub.challenge'];

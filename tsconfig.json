@@ -6,6 +6,6 @@
     "sourceMap": true
   },
   "files": ["./node_modules/@types/mocha/index.d.ts"],
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "config/*.ts"],
   "exclude": ["node_modules"]
 }

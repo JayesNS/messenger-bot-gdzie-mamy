@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "concurrently --kill-others \"tsc -w\" \"nodemon dist\"",
+    "start": "concurrently --kill-others \"tsc -w\" \"nodemon dist/src\"",
     "test": "tsc && mocha dist/**/*.spec.js"
   },
   "author": "",

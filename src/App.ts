@@ -17,6 +17,7 @@ class App {
     router.get('/', (req, res) => {
       res.send('Hello World');
     });
+
     router.use('/api', new ApiRoutes(new UekApi()).router);
     router.use('/webhook', new WebhookRoutes().router);
 

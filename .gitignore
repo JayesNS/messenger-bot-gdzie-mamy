@@ -4,3 +4,4 @@ page-access-token.js
 data/users.json
 dist
 Dockerfile
+config
