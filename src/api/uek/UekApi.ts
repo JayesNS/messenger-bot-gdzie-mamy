@@ -1,14 +1,15 @@
 import * as request from 'request';
 import * as xml2json from 'xml2json';
 
-import { Api } from '../Api';
+import { Api, TimeOffset } from '../Api';
 import { Activity, Group } from '../../models';
 import { groupMapper } from './mappers';
 import {
   selectOnlyGroups,
   selectMatchingGroups,
   selectOnlyLectures,
-  selectActivitiesFromDate
+  selectActivitiesFromDate,
+  selectUnfinishedActivites
 } from './selectors';
 import { activityMapper } from './mappers/activityMapper';
 
@@ -24,7 +25,6 @@ export class UekApi implements Api {
     const data: any = await this.getJSONFromUrl(url);
     const rawGroups: any = selectOnlyGroups(data);
     const groups: Group[] = rawGroups.map(groupMapper);
-
     return groups;
   }
 
@@ -49,13 +49,17 @@ export class UekApi implements Api {
     return lectures;
   }
 
-  async getScheduleFromDateByGroupId(
-    groupId: number,
-    datetime: Date = new Date()
-  ): Promise<Activity[]> {
-    const fullSchedule = await this.getFullScheduleByGroupId(groupId);
-    const activitiesFromDate = selectActivitiesFromDate(fullSchedule, datetime);
+  async getScheduleByGroupId(groupId: number, datetime: Date = new Date()): Promise<Activity[]> {
+    const fullSchedule: Activity[] = await this.getFullScheduleByGroupId(groupId);
+    const activitiesFromDate: Activity[] = selectActivitiesFromDate(fullSchedule, datetime);
     return activitiesFromDate;
+  }
+
+  async getActivityByGroupId(groupId: number, timeOffset: TimeOffset): Promise<Activity> {
+    const schedule: Activity[] = await this.getScheduleByGroupId(groupId);
+    const activities: Activity[] = selectUnfinishedActivites(schedule, new Date());
+    console.log({ activities, activity: activities[timeOffset], timeOffset });
+    return activities[timeOffset];
   }
 
   private getJSONFromUrl(url: string): Promise<any> {
@@ -65,13 +69,13 @@ export class UekApi implements Api {
           reject(error);
         }
 
-        const data = JSON.parse(this.convertXmlToJsonString(body));
+        const data: any = JSON.parse(this.convertXmlToJsonString(body));
         resolve(data);
       });
     });
   }
 
-  private convertXmlToJsonString(rawXML) {
+  private convertXmlToJsonString(rawXML: string): string {
     return xml2json.toJson(rawXML);
   }
 }
