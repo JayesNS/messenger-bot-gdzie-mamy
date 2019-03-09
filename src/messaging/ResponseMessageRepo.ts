@@ -7,9 +7,11 @@ import {
   FindSchedule,
   HandleGroupSelection,
   NoLectures,
-  TryShowActivities
+  TryShowActivities,
+  Configure,
+  FindActivity,
+  FindNextActivity
 } from './response-messages';
-import { Configure } from './response-messages/Configure';
 
 export class ResponseMessageRepo {
   private responseMessages: TSMap<string, ResponseMessage>;
@@ -24,7 +26,9 @@ export class ResponseMessageRepo {
       new Configure(),
       new HandleGroupSelection(),
       new NoLectures(),
-      new TryShowActivities()
+      new TryShowActivities(),
+      new FindActivity(),
+      new FindNextActivity()
     ]);
   }
 

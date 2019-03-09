@@ -1,18 +1,15 @@
 import { User, ResponseMessage } from '../models';
 import { ResponseMessageRepo } from './ResponseMessageRepo';
 import { SendApi } from './SendApi';
-import { TextMessage, TypingOnMessage, TypingOffMessage } from './messages';
-import { Configure } from './response-messages/Configure';
+import { TextMessage, TypingOffMessage } from './messages';
 import { HandleGroupSelection } from './response-messages/HandleGroupSelection';
-import { LocalUserRepo, UserRepo } from '../users';
+import { Configure } from './response-messages';
 
 export class MessageHandler {
   private responseRepo: ResponseMessageRepo;
   private sendApi: SendApi;
-  private userRepo: UserRepo;
 
-  constructor(userRepo: UserRepo) {
-    this.userRepo = userRepo;
+  constructor() {
     this.responseRepo = new ResponseMessageRepo();
     this.sendApi = new SendApi();
   }

@@ -3,8 +3,10 @@ import { Helpers } from '../helpers';
 
 export class ScheduleApi {
   private url: string;
+  public static serverDatetime: Date;
 
-  constructor() {
+  constructor(serverDatetime?: Date) {
+    ScheduleApi.serverDatetime = serverDatetime ? serverDatetime : new Date();
     this.url = 'http://localhost:1337/api';
   }
 
@@ -15,7 +17,9 @@ export class ScheduleApi {
   }
 
   async getActivites(groupId: number, datetime: Date = new Date()): Promise<Activity[]> {
-    const url = `${this.url}/group/${groupId}/schedule/${datetime}`;
+    const url = `${this.url}/groups/${groupId}/schedule/${encodeURIComponent(
+      datetime.toUTCString()
+    )}`;
     const data: any = await Helpers.makeRequest({ uri: url });
     return Helpers.parse<Activity[]>(data);
   }
@@ -25,8 +29,11 @@ export class ScheduleApi {
     offset: 'current' | 'next' = 'current',
     datetime: Date = new Date()
   ) {
-    const url = `${this.url}/group/${groupId}/activity/${offset}/${datetime}`;
+    const url = `${this.url}/groups/${groupId}/activity/${offset}/${encodeURIComponent(
+      datetime.toUTCString()
+    )}`;
     const data: any = await Helpers.makeRequest({ uri: url });
-    return Helpers.parse<Activity>(data);
+    console.log({ url, data });
+    return data ? Helpers.parse<Activity>(data) : null;
   }
 }

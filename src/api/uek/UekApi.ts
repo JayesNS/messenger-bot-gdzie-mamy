@@ -56,8 +56,12 @@ export class UekApi implements Api {
     return activitiesFromDate;
   }
 
-  async getActivityByGroupId(groupId: number, timeOffset: TimeOffset): Promise<Activity> {
-    const schedule: Activity[] = await this.getScheduleByGroupId(groupId);
+  async getActivityByGroupId(
+    groupId: number,
+    timeOffset: TimeOffset,
+    datetime?: Date
+  ): Promise<Activity> {
+    const schedule: Activity[] = await this.getScheduleByGroupId(groupId, datetime);
     const activities: Activity[] = selectUnfinishedActivites(schedule, new Date());
     return activities[timeOffset];
   }

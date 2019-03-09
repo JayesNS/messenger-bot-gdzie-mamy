@@ -18,7 +18,7 @@ export class ApiRoutes {
       res.send('API');
     });
     this.router.get(
-      '/groups/:groupId/activity/:offset(current|next)',
+      '/groups/:groupId/activity/:offset(current|next)/:datetime?',
       (req: Request, res: Response) => {
         this.getActivityByGroupId(req, res);
       }
@@ -34,9 +34,11 @@ export class ApiRoutes {
 
   private async getActivityByGroupId(req: Request, res: Response): Promise<void> {
     const groupId: number = req.params.groupId;
+    const dateParam: any = req.params.datetime;
+    const datetime: Date = dateParam ? new Date(dateParam) : undefined;
     const offset: TimeOffset =
       req.params.offset === 'current' ? TimeOffset.CURRENT : TimeOffset.NEXT;
-    const activity: Activity = await this.api.getActivityByGroupId(groupId, offset);
+    const activity: Activity = await this.api.getActivityByGroupId(groupId, offset, datetime);
     res.send(activity);
   }
   private async getAllGroupsRoute(req: Request, res: Response): Promise<void> {

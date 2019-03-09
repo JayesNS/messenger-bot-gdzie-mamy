@@ -6,6 +6,7 @@ export class Activity {
   type: string;
   person: string;
   place: string;
+  minutesToStart?: number;
 
   constructor() {}
 

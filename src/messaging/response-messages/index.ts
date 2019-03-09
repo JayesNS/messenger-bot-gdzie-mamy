@@ -5,3 +5,5 @@ export * from './Configure';
 export * from './HandleGroupSelection';
 export * from './NoLectures';
 export * from './TryShowActivites';
+export * from './FindActivity';
+export * from './FindNextActivity';
