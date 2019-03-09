@@ -5,7 +5,7 @@ export class User {
   groups: Group[];
   botMessagingHistory: string[];
 
-  constructor(public id: number) {
+  constructor(public id?: number) {
     this.groups = [];
     this.botMessagingHistory = [];
     LocalUserRepo.Instance.save();
@@ -26,5 +26,10 @@ export class User {
   }
   getLastHistoryRecord(): string {
     return this.botMessagingHistory[0];
+  }
+
+  deserialize(object: any): User {
+    Object.assign(this, object);
+    return this;
   }
 }

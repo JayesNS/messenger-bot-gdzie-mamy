@@ -12,6 +12,7 @@ import {
   selectUnfinishedActivites
 } from './selectors';
 import { activityMapper } from './mappers/activityMapper';
+import { Helpers } from '../../helpers';
 
 export class UekApi implements Api {
   private apiUrl: string;
@@ -58,24 +59,11 @@ export class UekApi implements Api {
   async getActivityByGroupId(groupId: number, timeOffset: TimeOffset): Promise<Activity> {
     const schedule: Activity[] = await this.getScheduleByGroupId(groupId);
     const activities: Activity[] = selectUnfinishedActivites(schedule, new Date());
-    console.log({ activities, activity: activities[timeOffset], timeOffset });
     return activities[timeOffset];
   }
 
-  private getJSONFromUrl(url: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      request(url, (error, response, body) => {
-        if (error || response.statusCode !== 200) {
-          reject(error);
-        }
-
-        const data: any = JSON.parse(this.convertXmlToJsonString(body));
-        resolve(data);
-      });
-    });
-  }
-
-  private convertXmlToJsonString(rawXML: string): string {
-    return xml2json.toJson(rawXML);
+  private async getJSONFromUrl(url: string): Promise<any> {
+    const data = await Helpers.makeRequest({ uri: url });
+    return JSON.parse(Helpers.convertXmlToJsonString(data));
   }
 }

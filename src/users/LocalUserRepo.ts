@@ -3,6 +3,7 @@ import { TSMap } from 'typescript-map';
 
 import { UserRepo } from './UserRepo';
 import { User } from '../models';
+import { Helpers } from '../helpers';
 
 const LOCAL_DATA_PATH = './data/users.json';
 
@@ -63,7 +64,11 @@ export class LocalUserRepo implements UserRepo {
           if (err || !data) {
             reject(err);
           }
-          resolve(new TSMap<number, User>().fromJSON(JSON.parse(data)));
+
+          const jsonData: any = Helpers.parse<any>(data);
+          this.users = new TSMap<number, User>();
+          Object.values(jsonData).forEach(user => this.saveUser(new User().deserialize(user)));
+          resolve(this.users);
         });
       });
     });

@@ -1,10 +1,14 @@
 import { Message, SenderAction } from '../../models';
 
 export class QuickReply {
-  content_type: string = 'text';
+  content_type: string;
+  title: string;
+  payload: any;
 
-  constructor(public title: string, public payload?: string) {
-    this.payload = this.payload || this.title;
+  constructor(title: string, payload?: string) {
+    this.content_type = 'text';
+    this.payload = payload || title;
+    this.title = title;
   }
 }
 

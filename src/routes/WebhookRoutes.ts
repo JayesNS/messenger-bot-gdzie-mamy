@@ -16,7 +16,7 @@ export class WebhookRoutes {
     this.router = Router();
     this.sendApi = new SendApi();
     this.userRepo = LocalUserRepo.Instance;
-    this.messageHandler = new MessageHandler();
+    this.messageHandler = new MessageHandler(this.userRepo);
 
     this.setupRoutes();
   }

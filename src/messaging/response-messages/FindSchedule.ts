@@ -5,7 +5,7 @@ import { NotConfigured } from './NotConfigured';
 export class FindSchedule implements ResponseMessage {
   readonly id = 'FIND_SCHEDULE';
   triggeredBy = text => new RegExp(' plan', 'i').test(text);
-  create = (payload: { sender: User }) => {
+  create = async (payload: { sender: User }) => {
     const groupId = payload.sender.groups[0];
     if (!groupId) {
       return new NotConfigured().create();

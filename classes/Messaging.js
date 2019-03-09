@@ -84,14 +84,14 @@ function prepareActivityMessage(activity) {
 }
 
 const Messages = {
-  NOT_CONFIGURED: {
+  /* NOT_CONFIGURED: {
     trigger: [MessageName.NOT_CONFIGURED],
     content: () =>
       Template.quickRepliesMessage(
         'Nie należysz jeszcze do żadnej grupy. Kliknij w poniższy przycisk, aby to dodać. ;)',
         [Template.createQuickReply('Skonfiguruj')]
       )
-  },
+  }, */
   FIND_SCHEDULE: {
     trigger: text => new RegExp(' plan', 'i').test(text),
     content: ({ message, datetime }) => {
@@ -226,16 +226,12 @@ const Messages = {
         });
     }
   },
-  NO_LECTURES_TODAY: {
-    trigger: [MessageName.NO_LECTURES_TODAY],
-    content: () => Template.textMessage('Tego dnia nie masz żadnych zajęć. :D')
-  },
   FIND_LATER_LECTURE: {
     trigger: text => new RegExp('(następni?e)|(później)|(potem)|(zaraz)').test(text),
     content: ({ message }) =>
       SendApi.sendMessageFromTemplate(Messages['FIND_ACTIVITY'], { message, offset: 'later' })
-  },
-  TRY_SHOW_SCHEDULE: {
+  }
+  /* TRY_SHOW_SCHEDULE: {
     trigger: text => new RegExp('((gdzie|co) ?mamy)|(gdziemamy)', '').test(text),
     content: ({ message }) => {
       const sender = message.sender;
@@ -245,8 +241,8 @@ const Messages = {
         SendApi.sendMessageFromTemplate(Messages['NOT_CONFIGURED'], { message });
       }
     }
-  },
-  GROUP_FOUND: {
+  } */
+  /* GROUP_FOUND: {
     trigger: [MessageName.GROUP_FOUND],
     content: ({ message, group }) => {
       const sender = message.sender;
@@ -258,16 +254,16 @@ const Messages = {
         { message }
       );
     }
-  },
-  PLEASE_SPECIFY_GROUP: {
+  }, */
+  /* PLEASE_SPECIFY_GROUP: {
     trigger: [MessageName.PLEASE_SPECIFY_GROUP],
     content: ({ groups }) =>
       Template.quickRepliesMessage(
         'Należysz do którejś z tych grup? Jeśli nie to wpisz poprawną nazwę lub sprawdź ją w planie.',
         groups.map(group => Template.createQuickReply(group.name, group.name))
       )
-  },
-  HANDLE_GROUP_SELECTION: {
+  }, */
+  /* HANDLE_GROUP_SELECTION: {
     trigger: [MessageName.HANDLE_GROUP_SELECTION],
     content: ({ message }) => {
       const sender = message.sender;
@@ -291,31 +287,31 @@ const Messages = {
           console.log('>>groups<<', error);
         });
     }
-  },
-  NO_MATCHING_GROUPS: {
+  }, */
+  /* NO_MATCHING_GROUPS: {
     trigger: [MessageName.NO_MATCHING_GROUPS],
     content: () =>
       Template.buttonMessage(
         'Nie znaleziono podanej przez ciebie grupy. Spróbuj wpisać ją jeszcze raz albo wklej jej nazwę z planu.',
         [Button.openSchedule()]
       )
-  },
-  CONFIGURE: {
+  }, */
+  /* CONFIGURE: {
     trigger: [MessageName.CONFIGURE, 'skonfiguruj', 'konfiguruj'],
     content: () =>
       Template.buttonMessage(
         'Teraz wpisz nazwę swojej grupy. Najlepiej jeśli wkleisz ją tutaj z planu zajęć ;)',
         [Button.openSchedule()]
       )
-  },
-  HOW_CAN_I_HELP_YOU: {
+  }, */
+  /* HOW_CAN_I_HELP_YOU: {
     trigger: [MessageName.HOW_CAN_I_HELP_YOU],
     content: () =>
       Template.quickRepliesMessage('Tu Gdzie Mamy. Jak mogę pomóc?', [
         Template.createQuickReply('Gdzie mamy?'),
         Template.createQuickReply('Skonfiguruj')
       ])
-  }
+  } */
 };
 
 module.exports = { MessageName, Messages, Messaging };

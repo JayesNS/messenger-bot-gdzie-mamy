@@ -1,7 +1,14 @@
 import { TSMap } from 'typescript-map';
 import { ResponseMessage } from '../models';
 import { isArray } from 'util';
-import { HowCanIHelpYou, NotConfigured, FindSchedule } from './response-messages';
+import {
+  HowCanIHelpYou,
+  NotConfigured,
+  FindSchedule,
+  HandleGroupSelection,
+  NoLectures,
+  TryShowActivities
+} from './response-messages';
 import { Configure } from './response-messages/Configure';
 
 export class ResponseMessageRepo {
@@ -14,7 +21,10 @@ export class ResponseMessageRepo {
       new HowCanIHelpYou(),
       new NotConfigured(),
       new FindSchedule(),
-      new Configure()
+      new Configure(),
+      new HandleGroupSelection(),
+      new NoLectures(),
+      new TryShowActivities()
     ]);
   }
 
@@ -27,7 +37,9 @@ export class ResponseMessageRepo {
   }
 
   addResponse(response: ResponseMessage): void {
-    this.responseMessages.set(response.id, response);
+    if (!this.responseMessages.has(response.id)) {
+      this.responseMessages.set(response.id, response);
+    }
   }
 
   getResponseById(id: string): ResponseMessage {
