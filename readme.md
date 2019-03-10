@@ -1,81 +1,24 @@
-# Obsługiwane wiadomości
+# Gdzie mamy? bot
 
-| Efekt                                    |                         Musi zawierać                          | Przykład                                                       | Uwagi                                                 |
-| ---------------------------------------- | :------------------------------------------------------------: | -------------------------------------------------------------- | ----------------------------------------------------- |
-| Uruchomienie procesu konfiguracji        |                **konfiguruj**, **skonfiguruj**                 | *Skonfiguruj*                                                  | konfiguracja trwa aż użytkownik poda poprawną grupę   |
-| Wyświetlanie aktualnych zajęć            |                  **co mamy**, **gdzie mamy**                   | *Gdzie mamy?*                                                  |
-| Wyświetlanie czasu do najbliższych zajęć |                  **co mamy**, **gdzie mamy**                   | *Gdzie mamy?*                                                  | czas do zajęć < 1 godzina                             |
-| Wyświetlanie późniejszych zajęć          | **następne**, **następnie**, **później**, **potem**, **zaraz** | *Co mamy potem?*                                               |
-| Wyświetlanie planu                       |                            **plan**                            | *Mogę zobaczyć plan?*, *Pokaż plan*                            |
-| Wyświetlanie planu na inny dzień         |              **co mamy (data)**, **plan (data)**               | *Co mamy 23 marca?*, *Co mamy jutro?*, *Pokaż plan 4 kwietnia* | najlepiej podawać nazwę miesiąca słownie np. 23 marca |
+## Check it out
 
+[Gdzie mamy? on Facebook](https://www.facebook.com/gdzie.mamy)
 
+## About
 
-# Wysyłanie wiadomości do bota
+Gdzie mamy? is a messenger bot which provides information about lectures for students of CUE. Because of its presence at Facebook, the bot is a platform-independent way of communication with students. There is no need to install it anywhere. To start using bot, find **Gdzie mamy?** on Facebook and initiate talk with it. Then you must go through simple configuration process of providing bot with information about your group name. At last you can ask _Gdzie mamy?_ by clicking button at the bottom or simply typing it in. The bot will reply almost immediately with information about your next lecture.
 
-Wyślij zapytanie POST na adres `https://gdziemamy.jsthats.me/webhook`, o typie zawartości `application/json`, parametrem jest tekst w formacie `JSON` z danymi potrzebnymi do wysłania zawartości.
+## Technology used
 
-### Przykładowy JSON
+- TypeScript
+- [Node.js 11](https://nodejs.org/en/)
+- [Express.js](https://expressjs.com/)
+- [MessengerPlatform](https://developers.facebook.com/docs/messenger-platform)
 
-```json
-{
-  "object": "page",
-  "entry": [
-    {
-      "messaging": [
-        {
-          "sender": {
-            "id": "<SENDER_ID>"
-          },
-          "message": {
-            "text": "hello, world!"
-          }
-        }
-      ]
-    }
-  ]
-}
-```
+The bot was rewritten in TypeScript ([typescipt](https://github.com/JayesNS/messenger-bot-gdzie-mamy/tree/typescript) branch) for better maintenance. So that more features can be added in the future easier. Dependency Injection mechanism opened way to implement more sources of data from other universities.
 
-### Przykładowe zapytanie POST
+## Limitations
 
-```bash
-curl -H "Content-Type: application/json" -X POST "https://gdziemamy.jsthats.me/webhook" -d '{"object":"page","entry": [{"messaging": [{"sender":{"id":"<SENDER_ID>"},"message":{"text":"hello, world!"}}]}]}'
-```
-
-# Wysyłanie wiadomości w imieniu bota
-
-Proces wygląda podobnie tylko tym razem zapytanie wysyłane jest na adres `https://graph.facebook.com/v2.6/me/messages?access_token=<PAGE_ACCESS_TOKEN>`. Typ zawartości tak samo jak wcześniej `application/json`. Przykładowa zawartość `JSON`:
-
-```json
-{
-  "recipient": {
-    "id": "<RECIPIENT_ID>"
-  },
-  "message": {
-    "text": "hello, world!"
-  }
-}
-```
-
-# Referencja
-
-Więcej o możliwościach bota na [Facebook API](https://developers.facebook.com/docs/messenger-platform)
-
-# Odpalanie lokalnego środowiska (node.js)
-
-Uruchom polecenie `npm install` w celu pobrania zależności.
-
-Następnie należy utworzyć plik z tokenem potrzebnym do połączenia z Facebook API. Access token dostępny jest za pośrednictwem Facebook API. Utwórz o nazwie `page-access-token.js` w katalogu w którym znajduje się `app.js`. Zawartość pliku powinna wyglądać następująco:
-
-```javascript
-module.exports = {
-  token: '<PAGE_ACCESS_TOKEN>'
-};
-```
-
-Gdy jesteś w katalogu z plikiem `app.js` uruchom polecenie `node app.js` lub `nodemon app.js`
-
-### Wysyłanie wiadomości przez lokalne środowisko
-
-Wysyłanie przebiega analogicznie do wysyłania przez serwer główny. Różnicą jest adres, który lokalnie ma postać `localhost:1337/webhook`
+- working only for CUE (UEK) students
+- only in Polish
+- only one group at the same time
