@@ -37,7 +37,7 @@ class Messaging {
 
     SendApi.sendMessageFromTemplate(messageResponse, { message });
 
-    sender.addMessagingHistoryRecord(messageResponseName);
+    sender.addMessagingHistoryRecord(messageResponseName || null);
   }
 
   static handleUnpredictedMessage(message) {
@@ -47,6 +47,9 @@ class Messaging {
 
     if (sender.getLastMessagingHistoryRecord() === MessageName.CONFIGURE) {
       SendApi.sendMessageFromTemplate(Messages['HANDLE_GROUP_SELECTION'], { message });
+      setTimeout(() => {
+        sender.addMessagingHistoryRecord(null);
+      }, 60000);
     } else {
       SendApi.sendMessageFromTemplate(Messages['HOW_CAN_I_HELP_YOU'], { message });
     }
@@ -149,7 +152,7 @@ const Messages = {
     trigger: text => new RegExp('30 koło kortów', 'i').test(text),
     content: () =>
       Template.imageMessage(
-        'https://www.facebook.com/gdzie.mamy/photos/a.2190666517928265/2190666531261597/?type=3&theater'
+        'https://www.facebook.com/gdzie.mamy/photos/a.2164040293924221/2193743870953863/?type=3&theater'
       )
   },
   FIND_ACTIVITY: {
@@ -178,7 +181,7 @@ const Messages = {
           const isActivityInOneHour = activity.minutesToStart < 60 && !isSenderLate;
           const lateness = Math.round(Math.abs(activity.minutesToStart));
 
-          if (isSenderLate) {
+          if (isSenderLate && lateness > 0) {
             SendApi.sendMessage(
               Template.textMessage(
                 `Jesteś spóźniony ${lateness} minut. ${
@@ -279,9 +282,16 @@ const Messages = {
           if (groups.length === 0) {
             sender.addMessagingHistoryRecord(MessageName['CONFIGURE']);
             SendApi.sendMessageFromTemplate(Messages['NO_MATCHING_GROUPS'], { message });
-          } else if (groups.length === 1) {
-            sender.addGroup(groups[0]);
-            SendApi.sendMessageFromTemplate(Messages['GROUP_FOUND'], { message, group: groups[0] });
+          } else if (groups.some(group => group.name.toLowerCase() === groupName.toLowerCase())) {
+            const foundGroup = groups.find(
+              group => group.name.toLowerCase() === groupName.toLowerCase()
+            );
+            sender.addGroup(foundGroup);
+            SendApi.sendMessageFromTemplate(Messages['GROUP_FOUND'], {
+              message,
+              group: foundGroup
+            });
+            sender.addMessagingHistoryRecord(null);
           } else {
             sender.addMessagingHistoryRecord(MessageName['CONFIGURE']);
             SendApi.sendMessageFromTemplate(Messages['PLEASE_SPECIFY_GROUP'], { message, groups });

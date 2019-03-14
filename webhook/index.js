@@ -22,6 +22,8 @@ router.post('/', (req, res) => {
       Messaging.handleMessage(senderId, webhookEvent.message);
     } else if (webhookEvent.postback) {
       Messaging.handleMessage(senderId, webhookEvent.postback);
+    } else {
+      Messaging.handleMessage(senderId, webhookEvent.attachments);
     }
   });
 

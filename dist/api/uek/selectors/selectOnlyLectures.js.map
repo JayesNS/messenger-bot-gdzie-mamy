@@ -1,0 +1,1 @@
+{"version":3,"file":"selectOnlyLectures.js","sourceRoot":"","sources":["../../../../src/api/uek/selectors/selectOnlyLectures.ts"],"names":[],"mappings":";;AAEa,QAAA,kBAAkB,GAAkB,CAAC,IAAS,EAAE,EAAE,CAC7D,IAAI,KAAK,EAAE;KACR,MAAM,CAAC,IAAI,CAAC,YAAY,CAAC,CAAC,SAAS,CAAC,CAAC;KACrC,MAAM,CAAC,QAAQ,CAAC,EAAE,CAAC,QAAQ,CAAC,KAAK,CAAC,KAAK,qBAAqB,CAAC,CAAC"}
